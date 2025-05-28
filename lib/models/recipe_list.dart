@@ -42,12 +42,29 @@ class RecipeList extends ChangeNotifier {
     final int recipeFound =
         _recipesList.indexWhere((element) => element.id == recipe.id);
     if (recipeFound == -1) {
-      final Recipe updatedRecipe = await RecipeService().addNutrients(recipe);
-      _recipesList.add(updatedRecipe);
-      ConnectDb().updateRecipes(_recipesList);
-      return updatedRecipe;
+      Recipe recipeToAdd = recipe;
+      // If the recipe is from Spoonacular (or any external source needing nutrient fetch)
+      // and nutrients are empty, fetch them.
+      // User-added recipes will come with nutrients pre-filled by Recipe.fromUserRecipe.
+      if (recipe.nutrients.isEmpty && recipe.category != 'User Added') { 
+          recipeToAdd = await RecipeService().addNutrients(recipe);
+      }
+      
+      // Ensure the ID is unique if it's a new recipe from a user source
+      // For now, RecipeList expects recipe.id to be correctly set before this point.
+      // The ListRecipesPage will handle creating a Recipe object from UserRecipe with a new ID.
+
+      _recipesList.add(recipeToAdd);
+      ConnectDb().updateRecipes(_recipesList); // Save to user's private recipe cache
+      return recipeToAdd;
     }
-    return recipe;
+    // If recipe exists, and it's an API recipe, and nutrients were missing, update them.
+    else if (_recipesList[recipeFound].nutrients.isEmpty && _recipesList[recipeFound].category != 'User Added') {
+      _recipesList[recipeFound] = await RecipeService().addNutrients(_recipesList[recipeFound]);
+      ConnectDb().updateRecipes(_recipesList);
+      return _recipesList[recipeFound];
+    }
+    return _recipesList[recipeFound]; // Return existing recipe
   }
 
   void setCurrentDate(String date) {

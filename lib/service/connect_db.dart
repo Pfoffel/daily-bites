@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:health_app_v1/models/recipe.dart';
+import 'package:health_app_v1/models/user_recipe.dart'; // Ensure UserRecipe is imported
 
 class ConnectDb extends ChangeNotifier {
   String _uid = FirebaseAuth.instance.currentUser!.uid;
@@ -14,6 +15,8 @@ class ConnectDb extends ChangeNotifier {
       FirebaseFirestore.instance.collection('mood');
   final CollectionReference _settings =
       FirebaseFirestore.instance.collection('settings');
+  final CollectionReference _sharedRecipes =
+      FirebaseFirestore.instance.collection('shared_recipes');
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> _streamMeals =
       FirebaseFirestore.instance
@@ -243,5 +246,30 @@ class ConnectDb extends ChangeNotifier {
     _timesMap = {};
     _goalsMap = {};
     notifyListeners();
+  }
+
+  Future<void> addSharedRecipe(UserRecipe recipe) async {
+    try {
+      await _sharedRecipes.add(recipe.toMap());
+    } catch (e) {
+      // Log the error or handle it as needed
+      print('Error adding shared recipe: $e');
+      rethrow; // Optionally rethrow the error if the caller needs to handle it
+    }
+  }
+
+  Future<List<UserRecipe>> getSharedRecipes() async {
+    try {
+      final QuerySnapshot<Map<String, dynamic>> querySnapshot =
+          await _sharedRecipes.orderBy('createdAt', descending: true).get() 
+          as QuerySnapshot<Map<String, dynamic>>; // Cast here
+      
+      return querySnapshot.docs
+          .map((doc) => UserRecipe.fromSnapshot(doc))
+          .toList();
+    } catch (e) {
+      print('Error fetching shared recipes: $e');
+      return []; // Return an empty list on error
+    }
   }
 }
