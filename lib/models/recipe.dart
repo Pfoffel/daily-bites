@@ -49,17 +49,10 @@ class Recipe {
 
   factory Recipe.fromMap(Map<String, dynamic> map) {
     return Recipe(
-      id: map['id'],
-      title: map['title'],
-      imageUrl: map['imgUrl'],
-      type: map['type'],
-      nutrients: map['nutrients'],
-      category: map['category'],
-    return Recipe(
       id: map['id'] as int,
       title: map['title'] as String,
-      imageUrl: map['imgUrl'] as String? ?? '', // Provide default if null
-      type: map['type'] as String? ?? '',       // Provide default if null
+      imageUrl: map['imgUrl'] as String? ?? '',
+      type: map['type'] as String? ?? '',
       nutrients: map['nutrients'] as List,
       category: map['category'] as String,
     );
@@ -70,9 +63,20 @@ class Recipe {
       id: newId, // This ID needs to be managed carefully by RecipeList
       title: userRecipe.name,
       imageUrl: userRecipe.imageUrl ?? '',
-      type: userRecipe.imageUrl != null && userRecipe.imageUrl!.toLowerCase().endsWith('.png') ? 'png' : (userRecipe.imageUrl != null && (userRecipe.imageUrl!.toLowerCase().endsWith('.jpg') || userRecipe.imageUrl!.toLowerCase().endsWith('.jpeg')) ? 'jpg' : ''),
+      type: userRecipe.imageUrl != null &&
+              userRecipe.imageUrl!.toLowerCase().endsWith('.png')
+          ? 'png'
+          : (userRecipe.imageUrl != null &&
+                  (userRecipe.imageUrl!.toLowerCase().endsWith('.jpg') ||
+                      userRecipe.imageUrl!.toLowerCase().endsWith('.jpeg'))
+              ? 'jpg'
+              : ''),
       nutrients: [
-        {'name': 'Calories', 'amount': userRecipe.calories, 'unit': 'kcal'}, // Assuming Spoonacular format
+        {
+          'name': 'Calories',
+          'amount': userRecipe.calories,
+          'unit': 'kcal'
+        }, // Assuming Spoonacular format
         {'name': 'Protein', 'amount': userRecipe.protein, 'unit': 'g'},
         {'name': 'Carbohydrates', 'amount': userRecipe.carbs, 'unit': 'g'},
         {'name': 'Fat', 'amount': userRecipe.fat, 'unit': 'g'},
