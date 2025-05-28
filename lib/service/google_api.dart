@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:health_app_v1/components/general/my_snackbar.dart';
 
@@ -17,7 +18,7 @@ class GoogleApi {
   });
 
   final GenerativeModel _model = GenerativeModel(
-      apiKey: "AIzaSyDUUdMIcqZWIdmgUoe-qOWM6pRkLKaaX2A",
+      apiKey: dotenv.env['GOOGLE_API_KEY'] ?? 'API_KEY not found',
       model: 'gemini-2.0-flash');
 
   List? parseAiJson(BuildContext context, String aiResponse) {

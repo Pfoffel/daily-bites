@@ -13,6 +13,7 @@ dependencies:
   fl_chart: ^0.71.0
   flutter:
     sdk: flutter
+  flutter_dotenv: ^5.2.1
   flutter_local_notifications: ^18.0.1
   flutter_speed_dial: ^7.0.0
   google_fonts: ^6.2.1
@@ -43,3 +44,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/Daily Bites Logo.png
+    - .env

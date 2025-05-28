@@ -22,6 +22,7 @@ import 'package:health_app_v1/service/notifications_service.dart';
 import 'package:health_app_v1/service/recipe_service.dart';
 import 'package:provider/provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,7 @@ void main() async {
   tz.initializeTimeZones();
   await NotificationsService.init();
   await Firebase.initializeApp();
+  await dotenv.load(fileName: ".env");
 
   runApp(
     MultiProvider(
