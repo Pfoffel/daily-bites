@@ -277,6 +277,14 @@ class _HomePageState extends State<HomePage> {
                   labelStyle: Theme.of(context).textTheme.labelMedium,
                   labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
                   onTap: () => context.read<RecipeList>().addMeal('Dinner')),
+            SpeedDialChild(
+              label: 'Custom Meal/Ingredient',
+              labelStyle: Theme.of(context).textTheme.labelMedium,
+              labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
+              onTap: () {
+                Navigator.pushNamed(context, '/add_custom_recipe_page');
+              },
+            ),
           ],
         ));
   }

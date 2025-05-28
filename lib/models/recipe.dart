@@ -1,3 +1,5 @@
+import 'package:health_app_v1/models/user_recipe.dart';
+
 class Recipe {
   final int id;
   final String title;
@@ -53,6 +55,29 @@ class Recipe {
       type: map['type'],
       nutrients: map['nutrients'],
       category: map['category'],
+    return Recipe(
+      id: map['id'] as int,
+      title: map['title'] as String,
+      imageUrl: map['imgUrl'] as String? ?? '', // Provide default if null
+      type: map['type'] as String? ?? '',       // Provide default if null
+      nutrients: map['nutrients'] as List,
+      category: map['category'] as String,
+    );
+  }
+
+  factory Recipe.fromUserRecipe(UserRecipe userRecipe, int newId) {
+    return Recipe(
+      id: newId, // This ID needs to be managed carefully by RecipeList
+      title: userRecipe.name,
+      imageUrl: userRecipe.imageUrl ?? '',
+      type: userRecipe.imageUrl != null && userRecipe.imageUrl!.toLowerCase().endsWith('.png') ? 'png' : (userRecipe.imageUrl != null && (userRecipe.imageUrl!.toLowerCase().endsWith('.jpg') || userRecipe.imageUrl!.toLowerCase().endsWith('.jpeg')) ? 'jpg' : ''),
+      nutrients: [
+        {'name': 'Calories', 'amount': userRecipe.calories, 'unit': 'kcal'}, // Assuming Spoonacular format
+        {'name': 'Protein', 'amount': userRecipe.protein, 'unit': 'g'},
+        {'name': 'Carbohydrates', 'amount': userRecipe.carbs, 'unit': 'g'},
+        {'name': 'Fat', 'amount': userRecipe.fat, 'unit': 'g'},
+      ],
+      category: 'User Added', // Or some other suitable category
     );
   }
 

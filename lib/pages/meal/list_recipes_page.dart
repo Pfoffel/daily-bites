@@ -9,6 +9,7 @@ import 'package:health_app_v1/components/meal/my_recipe_item.dart';
 import 'package:health_app_v1/models/current_date.dart';
 import 'package:health_app_v1/models/user_settings.dart';
 import 'package:health_app_v1/models/recipe.dart';
+import 'package:health_app_v1/models/user_recipe.dart'; // Added UserRecipe import
 import 'package:health_app_v1/models/recipe_list.dart';
 import 'package:health_app_v1/service/connect_db.dart';
 import 'package:health_app_v1/service/google_api.dart';
@@ -25,27 +26,64 @@ class ListRecipesPage extends StatefulWidget {
 
 class _ListRecipesPageState extends State<ListRecipesPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<Recipe> recipes = [];
+  // List<Recipe> recipes = []; // Renamed to apiRecipes
+  List<Recipe> apiRecipes = [];
+  List<UserRecipe> sharedUserRecipes = [];
+  List<dynamic> displayableItems = [];
   bool isLoading = false;
   bool isSearching = false;
-  bool aiLoading = false;
+  bool aiLoading = false; // This seems related to AI image processing, keep for now
   final ImagePicker picker = ImagePicker();
 
-  void fetchRecipes(List queries, List categories) async {
+  // Modified fetchRecipes to fetchApiRecipes
+  // Changed signature to Future<void> async
+  Future<void> fetchApiRecipes(List queries, List categories) async {
     final List<Recipe> results = [];
-    setState(() {
-      isLoading = true;
-      isSearching = true;
-    });
+    // Removed setState from here:
+    // setState(() {
+    //   isLoading = true; 
+    //   isSearching = true; 
+    // });
 
     final recipeService = Provider.of<RecipeService>(context, listen: false);
     for (var query in queries) {
       List<Recipe> result = await recipeService.getFood(query, categories);
       results.addAll(result);
     }
+    apiRecipes = results;
+    // combineAndDisplayRecipes will be called after both API and shared recipes are fetched
+    // For standalone API search (if ever needed), call combineAndDisplayRecipes here.
+  }
+
+  Future<void> fetchSharedRecipes() async {
+    // No need to set isLoading here as fetchApiRecipes would have set it
+    // if search term is not empty.
+    if (_searchController.text.isNotEmpty) {
+      final connectDb = Provider.of<ConnectDb>(context, listen: false);
+      List<UserRecipe> allShared = await connectDb.getSharedRecipes();
+      sharedUserRecipes = allShared
+          .where((ur) => ur.name
+              .toLowerCase()
+              .contains(_searchController.text.toLowerCase()))
+          .toList();
+    } else {
+      sharedUserRecipes.clear(); // Clear if search term is empty
+    }
+  }
+
+  void combineAndDisplayRecipes() {
+    displayableItems.clear();
+    displayableItems.addAll(apiRecipes);
+    displayableItems.addAll(sharedUserRecipes); // Add UserRecipe objects directly
+
+    // Sort by name, for example, if desired. Optional.
+    // displayableItems.sort((a, b) {
+    //   String nameA = a is Recipe ? a.title : (a as UserRecipe).name;
+    //   String nameB = b is Recipe ? b.title : (b as UserRecipe).name;
+    //   return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+    // });
 
     setState(() {
-      recipes = results;
       isLoading = false;
     });
   }
@@ -212,15 +250,48 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                   setState(() {
                                     isSearching = false;
                                     _searchController.clear();
+                                    apiRecipes.clear();
+                                    sharedUserRecipes.clear();
+                                    displayableItems.clear();
+                                    isLoading = false;
                                   });
                                 },
                                 icon: Icon(Icons.close),
                               )
                             : null),
-                    onSubmitted: (value) {
+                    onSubmitted: (value) async { 
                       if (value.isNotEmpty) {
-                        fetchRecipes(
-                            [value], ['Simple Foods', 'Products', 'Recipes']);
+                        apiRecipes.clear();
+                        sharedUserRecipes.clear();
+                        displayableItems.clear();
+                        setState(() {
+                          isLoading = true;
+                          isSearching = true;
+                        });
+
+                        try {
+                          await Future.wait([
+                            fetchApiRecipes([value], ['Simple Foods', 'Products', 'Recipes']),
+                            fetchSharedRecipes(),
+                          ]);
+                        } catch (e) {
+                          print("Error fetching recipes: $e");
+                          if (mounted) {
+                            showMySnackBar(context, 'Error fetching recipes', 'Dismiss', () {});
+                          }
+                        } finally {
+                          // combineAndDisplayRecipes will be called here, 
+                          // which internally calls setState and sets isLoading = false
+                          combineAndDisplayRecipes(); 
+                        }
+                      } else {
+                        setState(() {
+                          isSearching = false;
+                          apiRecipes.clear();
+                          sharedUserRecipes.clear();
+                          displayableItems.clear();
+                          isLoading = false;
+                        });
                       }
                     },
                   ),
@@ -235,33 +306,63 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                           child: Padding(
                           padding: const EdgeInsets.only(bottom: 30),
                           child: ListView.builder(
-                            itemCount: recipes.length,
+                            // itemCount: recipes.length -> itemCount: displayableItems.length
+                            itemCount: displayableItems.length,
                             itemBuilder: (context, index) {
+                              final dynamic item = displayableItems[index];
+                              String title, imageUrl;
+                              bool isAlreadyAdded = false;
+                              int currentItemIdForCheck = -1; // Default for UserRecipe or unmatchable
+
+                              if (item is Recipe) {
+                                title = item.title;
+                                imageUrl = item.imgUrl;
+                                currentItemIdForCheck = item.id;
+                                isAlreadyAdded = value.currentMealData['recipes'].contains(item.id);
+                              } else if (item is UserRecipe) {
+                                title = item.name;
+                                imageUrl = item.imageUrl ?? '';
+                                // UserRecipes are not in currentMealData by ID, so isAlreadyAdded is effectively false for search
+                                // unless we implement a more complex check (e.g. by name, if that makes sense)
+                                // For now, allow adding.
+                                isAlreadyAdded = false; 
+                              } else {
+                                return const SizedBox.shrink(); // Should not happen
+                              }
+
                               return MyRecipeItem(
-                                  title: recipes[index].title,
-                                  imgUrl: recipes[index].imgUrl,
-                                  onPressed: value.currentMealData['recipes']
-                                          .contains(recipes[index].id)
-                                      ? null
-                                      : () {
-                                          final Map<String, dynamic> times =
-                                              context
-                                                  .read<UserSettings>()
-                                                  .schedule;
-                                          Provider.of<RecipeList>(context,
-                                                  listen: false)
-                                              .addRecipe(
-                                                  recipes[index],
-                                                  value.currentMealData[
-                                                      'mealTitle'],
-                                                  times);
-                                          _notifyAdded(context, recipes[index]);
-                                        },
-                                  onTap: () => Navigator.pushNamed(
-                                      context, '/recipe_insights_page',
-                                      arguments: recipes[index]),
-                                  icon: value.currentMealData['recipes']
-                                          .contains(recipes[index].id)
+                                  title: title,
+                                  imgUrl: imageUrl,
+                                  // isUserAdded: item is UserRecipe, // Optional: for MyRecipeItem styling
+                                  onPressed: isAlreadyAdded
+                                    ? null
+                                    : () {
+                                        final currentRecipeList = Provider.of<RecipeList>(context, listen: false);
+                                        final Map<String, dynamic> times = context.read<UserSettings>().schedule;
+                                        
+                                        if (item is UserRecipe) {
+                                          int newId = 1;
+                                          final positiveIds = currentRecipeList.recipesList.map((r) => r.id).where((id) => id > 0).toList();
+                                          if (positiveIds.isNotEmpty) {
+                                            newId = positiveIds.reduce((a, b) => a > b ? a : b) + 1;
+                                          }
+                                          final recipeToAdd = Recipe.fromUserRecipe(item, newId);
+                                          currentRecipeList.addRecipe(recipeToAdd, value.currentMealData['mealTitle'], times);
+                                          _notifyAdded(context, recipeToAdd);
+                                        } else if (item is Recipe) {
+                                          currentRecipeList.addRecipe(item, value.currentMealData['mealTitle'], times);
+                                          _notifyAdded(context, item);
+                                        }
+                                      },
+                                  onTap: () {
+                                    if (item is Recipe) {
+                                       Navigator.pushNamed(context, '/recipe_insights_page', arguments: item);
+                                    } else if (item is UserRecipe) {
+                                       final tempRecipeForInsight = Recipe.fromUserRecipe(item, 0 - item.hashCode); // temp ID
+                                       Navigator.pushNamed(context, '/recipe_insights_page', arguments: tempRecipeForInsight);
+                                    }
+                                  },
+                                  icon: isAlreadyAdded
                                       ? Icons.check_rounded
                                       : Icons.add_circle);
                             },
@@ -292,7 +393,8 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                             ),
                           ),
                         )
-                      : Expanded(
+                      // Display current meal's recipes if not searching
+                      : Expanded( 
                           child: ReorderableListView.builder(
                             onReorder: (oldIndex, newIndex) => updateOrder(
                                 oldIndex,
@@ -303,7 +405,11 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                               final Recipe recipe = value.recipesList
                                   .firstWhere((recipe) =>
                                       recipe.id ==
-                                      value.currentMealData['recipes'][index]);
+                                      value.currentMealData['recipes'][index],
+                                      orElse: () => Recipe(id: -1, title: "Error - Not Found", nutrients: [], category: 'Error'), // Safety net
+                                      );
+                              if (recipe.id == -1) return const SizedBox.shrink(); // Don't render if recipe not found
+
                               return MyRecipeItem(
                                 key: ValueKey(recipe.id),
                                 title: recipe.title,
@@ -346,6 +452,9 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                     final XFile? pickedFile =
                         await picker.pickImage(source: ImageSource.camera);
                     if (context.mounted) {
+                       // pickAndProcessImage calls the old fetchRecipes (now fetchApiRecipes)
+                       // This part is not covered by the Future.wait fix for manual search
+                       // but the subtask is focused on manual text search.
                       pickAndProcessImage(context, pickedFile);
                     }
                   }),
