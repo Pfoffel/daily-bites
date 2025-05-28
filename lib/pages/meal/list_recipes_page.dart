@@ -152,8 +152,21 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
       if (context.mounted && response.text != null) {
         List ingredients = gemini.parseAiJson(context, response.text!) ?? [];
         if (ingredients.isNotEmpty) {
-          fetchRecipes(ingredients, ['Simple Foods']);
-          return;
+          // fetchRecipes(ingredients, ['Simple Foods']); // OLD LINE
+          fetchApiRecipes(ingredients, ['Simple Foods']); // NEW LINE
+          // After fetchApiRecipes, we might need to consider fetching shared recipes too
+          // and then calling combineAndDisplayRecipes. For now, just fix the name.
+          // To make it consistent with text search, it should be:
+          // setState(() { isLoading = true; isSearching = true; }); // if not already set
+          // await Future.wait([
+          //   fetchApiRecipes(ingredients, ['Simple Foods']),
+          //   fetchSharedRecipes(), // This might need adjustment if we want to filter shared by ingredients
+          // ]);
+          // combineAndDisplayRecipes();
+          // For now, the scope is just to fix the function name.
+          // The existing behavior of image search only showing API results will remain
+          // until we decide to enhance it.
+          return; 
         }
         if (context.mounted) {
           showMySnackBar(context, 'Ingredients not found', 'Dismiss', () {
