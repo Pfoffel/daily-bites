@@ -49,13 +49,6 @@ class Recipe {
 
   factory Recipe.fromMap(Map<String, dynamic> map) {
     return Recipe(
-      id: map['id'],
-      title: map['title'],
-      imageUrl: map['imgUrl'],
-      type: map['type'],
-      nutrients: map['nutrients'],
-      category: map['category'],
-    return Recipe(
       id: map['id'] as int,
       title: map['title'] as String,
       imageUrl: map['imgUrl'] as String? ?? '', // Provide default if null
