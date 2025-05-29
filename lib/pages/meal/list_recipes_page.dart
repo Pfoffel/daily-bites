@@ -331,7 +331,20 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                               if (item is Recipe) {
                                 title = item.title;
                                 imageUrl = item.imgUrl;
-                                currentItemIdForCheck = item.id; // item.id is now String
+                                currentItemIdForCheck = item.id; // item.id should be String here
+
+                                // ==== DEBUG PRINTS START ====
+                                print("SEARCH_DEBUG: Item is Recipe. Title: '${item.title}', ID: '${item.id}' (Type: ${item.id.runtimeType})");
+                                if (value.currentMealData != null && value.currentMealData['recipes'] != null) {
+                                  print("SEARCH_DEBUG: currentMealData['recipes'] content: ${value.currentMealData['recipes']}");
+                                  (value.currentMealData['recipes'] as List).forEach((dynamic recipeIdInMeal) {
+                                    print("SEARCH_DEBUG: Meal recipe ID: '$recipeIdInMeal' (Type: ${recipeIdInMeal.runtimeType})");
+                                  });
+                                } else {
+                                  print("SEARCH_DEBUG: currentMealData or currentMealData['recipes'] is null.");
+                                }
+                                // ==== DEBUG PRINTS END ====
+                                
                                 isAlreadyAdded = value.currentMealData['recipes'].contains(item.id);
                               } else if (item is UserRecipe) {
                                 title = item.name;

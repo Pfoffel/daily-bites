@@ -99,7 +99,25 @@ class RecipeList extends ChangeNotifier {
   void setCurrentMeal(int mealIndex) {
     _currentMeal = mealIndex;
     _currentMealdata.clear();
-    _currentMealdata.addAll(_mealList[mealIndex]);
+
+    if (mealIndex >= 0 && mealIndex < _mealList.length) {
+      // Ensure the specific meal object's recipe IDs are strings before assigning to _currentMealdata
+      final Map<String, dynamic> originalMealData = Map<String, dynamic>.from(_mealList[mealIndex]);
+      
+      if (originalMealData.containsKey('recipes') && originalMealData['recipes'] is List) {
+        final List<dynamic> originalRecipeIds = originalMealData['recipes'];
+        final List<String> newRecipeIds = originalRecipeIds.map((id) {
+          if (id is int) {
+            return id.toString();
+          } else if (id is String) {
+            return id;
+          }
+          return ''; // Or handle error appropriately
+        }).where((id) => id.isNotEmpty).toList();
+        originalMealData['recipes'] = newRecipeIds;
+      }
+      _currentMealdata.addAll(originalMealData);
+    }
     notifyListeners();
   }
 

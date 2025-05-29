@@ -50,33 +50,34 @@ class Recipe {
   factory Recipe.fromMap(Map<String, dynamic> map) {
     dynamic idValue = map['id'];
     String finalId;
+
     if (idValue == null) {
-      // Consider how to handle this case. For now, let's assume Spoonacular IDs are usually ints.
-      // If this map can come from other sources where ID might be missing, this needs robust handling.
-      // For Spoonacular IDs, they are typically integers.
-      // If 'id' can be legitimately null or missing for other recipe types, adjust logic.
-      // For this specific conversion, if it's from Spoonacular, an ID should exist.
-      // If converting from a user's own recipe map where ID might be a string already:
-      throw ArgumentError('Recipe ID from map cannot be null'); 
+      // Consider if a default ID or different handling is better than throwing,
+      // depending on how critical a missing ID from source is.
+      // For now, throwing an error highlights data issues.
+      print("Recipe.fromMap: Encountered null ID for recipe titled: ${map['title']}");
+      throw ArgumentError('Recipe ID from map cannot be null. Recipe title: ${map['title']}');
     } else if (idValue is int) {
       finalId = idValue.toString();
     } else if (idValue is String) {
       finalId = idValue;
     } else {
-      throw ArgumentError('Recipe ID from map must be a String or an int, got ${idValue.runtimeType}');
+      print("Recipe.fromMap: Encountered ID of unexpected type ${idValue.runtimeType} for recipe titled: ${map['title']}");
+      throw ArgumentError('Recipe ID from map must be a String or an int, got ${idValue.runtimeType}. Recipe title: ${map['title']}');
     }
 
     return Recipe(
       id: finalId,
-      title: map['title'] as String,
+      title: map['title'] as String? ?? 'Untitled Recipe', // Added null safety for title
       imageUrl: map['imgUrl'] as String? ?? '',
       type: map['type'] as String? ?? '',
-      nutrients: map['nutrients'] as List,
-      category: map['category'] as String,
+      // Ensure nutrients and category also have null safety or default values if they can be null from map
+      nutrients: map['nutrients'] as List? ?? [], 
+      category: map['category'] as String? ?? 'Uncategorized',
     );
   }
 
-  factory Recipe.fromUserRecipe(UserRecipe userRecipe) { // Removed newId parameter
+  factory Recipe.fromUserRecipe(UserRecipe userRecipe) { 
     if (userRecipe.id == null) {
       throw ArgumentError('UserRecipe ID cannot be null when converting to Recipe');
     }
