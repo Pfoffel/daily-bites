@@ -51,8 +51,8 @@ class Recipe {
     return Recipe(
       id: map['id'] as int,
       title: map['title'] as String,
-      imageUrl: map['imgUrl'] as String? ?? '',
-      type: map['type'] as String? ?? '',
+      imageUrl: map['imgUrl'] as String? ?? '', // Provide default if null
+      type: map['type'] as String? ?? '', // Provide default if null
       nutrients: map['nutrients'] as List,
       category: map['category'] as String,
     );

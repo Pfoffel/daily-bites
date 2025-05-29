@@ -37,13 +37,14 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
   final ImagePicker picker = ImagePicker();
 
   // Modified fetchRecipes to fetchApiRecipes
-  void fetchApiRecipes(List queries, List categories) async {
+  // Changed signature to Future<void> async
+  Future<void> fetchApiRecipes(List queries, List categories) async {
     final List<Recipe> results = [];
-    setState(() {
-      isLoading = true;
-      isSearching = true; // Keep isSearching true as overall search is active
-      // displayableItems.clear(); // Clearing is now handled before calling fetchApiRecipes or in combine
-    });
+    // Removed setState from here:
+    // setState(() {
+    //   isLoading = true;
+    //   isSearching = true;
+    // });
 
     final recipeService = Provider.of<RecipeService>(context, listen: false);
     for (var query in queries) {
@@ -153,7 +154,20 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
       if (context.mounted && response.text != null) {
         List ingredients = gemini.parseAiJson(context, response.text!) ?? [];
         if (ingredients.isNotEmpty) {
-          fetchApiRecipes(ingredients, ['Simple Foods']);
+          // fetchRecipes(ingredients, ['Simple Foods']); // OLD LINE
+          fetchApiRecipes(ingredients, ['Simple Foods']); // NEW LINE
+          // After fetchApiRecipes, we might need to consider fetching shared recipes too
+          // and then calling combineAndDisplayRecipes. For now, just fix the name.
+          // To make it consistent with text search, it should be:
+          // setState(() { isLoading = true; isSearching = true; }); // if not already set
+          // await Future.wait([
+          //   fetchApiRecipes(ingredients, ['Simple Foods']),
+          //   fetchSharedRecipes(), // This might need adjustment if we want to filter shared by ingredients
+          // ]);
+          // combineAndDisplayRecipes();
+          // For now, the scope is just to fix the function name.
+          // The existing behavior of image search only showing API results will remain
+          // until we decide to enhance it.
           return;
         }
         if (context.mounted) {
@@ -261,26 +275,32 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                               )
                             : null),
                     onSubmitted: (value) async {
-                      // Made async
                       if (value.isNotEmpty) {
-                        // Clear previous results before new search
+                        apiRecipes.clear();
+                        sharedUserRecipes.clear();
+                        displayableItems.clear();
                         setState(() {
-                          apiRecipes.clear();
-                          sharedUserRecipes.clear();
-                          displayableItems.clear();
-                          isLoading =
-                              true; // Set loading true at the start of submission
-                          isSearching = true; // show clear button
+                          isLoading = true;
+                          isSearching = true;
                         });
-                        fetchApiRecipes([
-                          value
-                        ], [
-                          'Simple Foods',
-                          'Products',
-                          'Recipes'
-                        ]); // Fetches API
-                        await fetchSharedRecipes(); // Fetches Shared
-                        combineAndDisplayRecipes(); // Then combines and updates UI
+
+                        try {
+                          await Future.wait([
+                            fetchApiRecipes([value],
+                                ['Simple Foods', 'Products', 'Recipes']),
+                            fetchSharedRecipes(),
+                          ]);
+                        } catch (e) {
+                          print("Error fetching recipes: $e");
+                          if (mounted) {
+                            showMySnackBar(context, 'Error fetching recipes',
+                                'Dismiss', () {});
+                          }
+                        } finally {
+                          // combineAndDisplayRecipes will be called here,
+                          // which internally calls setState and sets isLoading = false
+                          combineAndDisplayRecipes();
+                        }
                       } else {
                         setState(() {
                           isSearching = false;
@@ -442,9 +462,9 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                     category: 'Error'), // Safety net
                               );
                               if (recipe.id == -1) {
-                                return const SizedBox.shrink();
-                              } // Don't render if recipe not found
-
+                                return const SizedBox
+                                    .shrink(); // Don't render if recipe not found
+                              }
                               return MyRecipeItem(
                                 key: ValueKey(recipe.id),
                                 title: recipe.title,
@@ -487,6 +507,9 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                     final XFile? pickedFile =
                         await picker.pickImage(source: ImageSource.camera);
                     if (context.mounted) {
+                      // pickAndProcessImage calls the old fetchRecipes (now fetchApiRecipes)
+                      // This part is not covered by the Future.wait fix for manual search
+                      // but the subtask is focused on manual text search.
                       pickAndProcessImage(context, pickedFile);
                     }
                   }),
