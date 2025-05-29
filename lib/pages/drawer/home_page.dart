@@ -81,6 +81,8 @@ class _HomePageState extends State<HomePage> {
               userMeals.addEntries({date.sanitizedDate: _defaultMeals}.entries);
             }
 
+            print(userMeals);
+
             mealList = userMeals[date.sanitizedDate];
             final Map<String, double> totalNutrients =
                 context.read<RecipeList>().sumNutrients(mealList);

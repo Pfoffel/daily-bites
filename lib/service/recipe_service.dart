@@ -23,8 +23,10 @@ class RecipeService {
             'id': recipeData['id'],
             'title': recipeData['title'],
             'imgUrl': recipeData['image'], // map 'image' to 'imgUrl'
-            'type': recipeData['imageType'], // Spoonacular often provides imageType
-            'nutrients': recipeData['nutrition']?['nutrients'] ?? [], // Ensure nutrients list exists
+            'type':
+                recipeData['imageType'], // Spoonacular often provides imageType
+            'nutrients': recipeData['nutrition']?['nutrients'] ??
+                [], // Ensure nutrients list exists
             'category': 'Recipes', // Set category
           };
           final recipe = Recipe.fromMap(recipeMapForFromMap);
@@ -96,7 +98,7 @@ class RecipeService {
             'id': item['id'],
             'title': item['title'],
             'imgUrl': item['image'], // product 'image' is usually a full URL
-            'type': item['imageType'], 
+            'type': item['imageType'],
             'nutrients': item['nutrition']?['nutrients'] ?? [],
             'category': 'Products',
           };
@@ -135,10 +137,13 @@ class RecipeService {
                   'id': result['id'],
                   'title': result['name'],
                   'imgUrl': result['image'],
-                  'type': null, // General food search might not provide 'imageType'
-                  'nutrients': [], // Correctly empty, to be filled by addNutrients
+                  'type':
+                      null, // General food search might not provide 'imageType'
+                  'nutrients':
+                      [], // Correctly empty, to be filled by addNutrients
                   'category': category,
                 };
+                print("Here: $foodMapForFromMap");
                 final Recipe food = Recipe.fromMap(foodMapForFromMap);
                 products.add(food);
               }

@@ -32,7 +32,8 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
   List<dynamic> displayableItems = [];
   bool isLoading = false;
   bool isSearching = false;
-  bool aiLoading = false; // This seems related to AI image processing, keep for now
+  bool aiLoading =
+      false; // This seems related to AI image processing, keep for now
   final ImagePicker picker = ImagePicker();
 
   // Modified fetchRecipes to fetchApiRecipes
@@ -41,8 +42,8 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
     final List<Recipe> results = [];
     // Removed setState from here:
     // setState(() {
-    //   isLoading = true; 
-    //   isSearching = true; 
+    //   isLoading = true;
+    //   isSearching = true;
     // });
 
     final recipeService = Provider.of<RecipeService>(context, listen: false);
@@ -74,7 +75,8 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
   void combineAndDisplayRecipes() {
     displayableItems.clear();
     displayableItems.addAll(apiRecipes);
-    displayableItems.addAll(sharedUserRecipes); // Add UserRecipe objects directly
+    displayableItems
+        .addAll(sharedUserRecipes); // Add UserRecipe objects directly
 
     // Sort by name, for example, if desired. Optional.
     // displayableItems.sort((a, b) {
@@ -88,7 +90,8 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
     });
   }
 
-  void updateOrder(int oldIndex, int newIndex, String id) { // Changed int id to String id
+  void updateOrder(int oldIndex, int newIndex, String id) {
+    // Changed int id to String id
     setState(() {
       if (oldIndex < newIndex) {
         newIndex--;
@@ -153,7 +156,21 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
         List ingredients = gemini.parseAiJson(context, response.text!) ?? [];
         if (ingredients.isNotEmpty) {
           // fetchRecipes(ingredients, ['Simple Foods']); // OLD LINE
-          fetchApiRecipes(ingredients, ['Simple Foods']); // NEW LINE
+          try {
+            await Future.wait([
+              fetchApiRecipes(ingredients, ['Simple Foods']),
+              fetchSharedRecipes(),
+            ]);
+          } catch (e) {
+            print("Error fetching recipes: $e");
+            if (mounted) {
+              showMySnackBar(
+                  context, 'Error fetching recipes', 'Dismiss', () {});
+            }
+          } finally {
+            combineAndDisplayRecipes();
+          }
+
           // After fetchApiRecipes, we might need to consider fetching shared recipes too
           // and then calling combineAndDisplayRecipes. For now, just fix the name.
           // To make it consistent with text search, it should be:
@@ -166,7 +183,7 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
           // For now, the scope is just to fix the function name.
           // The existing behavior of image search only showing API results will remain
           // until we decide to enhance it.
-          return; 
+          return;
         }
         if (context.mounted) {
           showMySnackBar(context, 'Ingredients not found', 'Dismiss', () {
@@ -272,7 +289,7 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                 icon: Icon(Icons.close),
                               )
                             : null),
-                    onSubmitted: (value) async { 
+                    onSubmitted: (value) async {
                       if (value.isNotEmpty) {
                         apiRecipes.clear();
                         sharedUserRecipes.clear();
@@ -284,18 +301,20 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
 
                         try {
                           await Future.wait([
-                            fetchApiRecipes([value], ['Simple Foods', 'Products', 'Recipes']),
+                            fetchApiRecipes([value],
+                                ['Simple Foods', 'Products', 'Recipes']),
                             fetchSharedRecipes(),
                           ]);
                         } catch (e) {
                           print("Error fetching recipes: $e");
                           if (mounted) {
-                            showMySnackBar(context, 'Error fetching recipes', 'Dismiss', () {});
+                            showMySnackBar(context, 'Error fetching recipes',
+                                'Dismiss', () {});
                           }
                         } finally {
-                          // combineAndDisplayRecipes will be called here, 
+                          // combineAndDisplayRecipes will be called here,
                           // which internally calls setState and sets isLoading = false
-                          combineAndDisplayRecipes(); 
+                          combineAndDisplayRecipes();
                         }
                       } else {
                         setState(() {
@@ -326,51 +345,65 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
 
                               // ==== NEW TOP-LEVEL DEBUG PRINT ====
                               if (item == null) {
-                                print("SEARCH_ITEM_DEBUG: Item at index $index is NULL.");
+                                print(
+                                    "SEARCH_ITEM_DEBUG: Item at index $index is NULL.");
                               } else {
                                 String itemIdStr = "N/A";
-                                String itemTypeStr = item.runtimeType.toString();
+                                String itemTypeStr =
+                                    item.runtimeType.toString();
                                 if (item is Recipe) {
-                                  itemIdStr = "ID: ${item.id} (Type: ${item.id.runtimeType})";
+                                  itemIdStr =
+                                      "ID: ${item.id} (Type: ${item.id.runtimeType})";
                                 } else if (item is UserRecipe) {
-                                  itemIdStr = "ID: ${item.id} (Type: ${item.id?.runtimeType ?? 'null ID'})";
+                                  itemIdStr =
+                                      "ID: ${item.id} (Type: ${item.id?.runtimeType ?? 'null ID'})";
                                 }
-                                print("SEARCH_ITEM_DEBUG: Index: $index, ItemType: $itemTypeStr, $itemIdStr, Title/Name: ${item is Recipe ? item.title : (item is UserRecipe ? item.name : 'N/A')}");
+                                print(
+                                    "SEARCH_ITEM_DEBUG: Index: $index, ItemType: $itemTypeStr, $itemIdStr, Title/Name: ${item is Recipe ? item.title : (item is UserRecipe ? item.name : 'N/A')}");
                               }
                               // ==== END NEW TOP-LEVEL DEBUG PRINT ====
 
                               String title, imageUrl;
                               bool isAlreadyAdded = false;
                               // Changed int currentItemIdForCheck = -1 to String? currentItemIdForCheck = null;
-                              String? currentItemIdForCheck = null; 
+                              String? currentItemIdForCheck;
 
                               if (item is Recipe) {
                                 title = item.title;
                                 imageUrl = item.imgUrl;
-                                currentItemIdForCheck = item.id; // item.id should be String here
+                                currentItemIdForCheck =
+                                    item.id; // item.id should be String here
 
                                 // ==== DEBUG PRINTS START ====
-                                print("SEARCH_DEBUG: Item is Recipe. Title: '${item.title}', ID: '${item.id}' (Type: ${item.id.runtimeType})");
-                                if (value.currentMealData != null && value.currentMealData['recipes'] != null) {
-                                  print("SEARCH_DEBUG: currentMealData['recipes'] content: ${value.currentMealData['recipes']}");
-                                  (value.currentMealData['recipes'] as List).forEach((dynamic recipeIdInMeal) {
-                                    print("SEARCH_DEBUG: Meal recipe ID: '$recipeIdInMeal' (Type: ${recipeIdInMeal.runtimeType})");
-                                  });
+                                print(
+                                    "SEARCH_DEBUG: Item is Recipe. Title: '${item.title}', ID: '${item.id}' (Type: ${item.id.runtimeType})");
+                                if (value.currentMealData['recipes'] != null) {
+                                  print(
+                                      "SEARCH_DEBUG: currentMealData['recipes'] content: ${value.currentMealData['recipes']}");
+                                  for (var recipeIdInMeal in (value
+                                      .currentMealData['recipes'] as List)) {
+                                    print(
+                                        "SEARCH_DEBUG: Meal recipe ID: '$recipeIdInMeal' (Type: ${recipeIdInMeal.runtimeType})");
+                                  }
                                 } else {
-                                  print("SEARCH_DEBUG: currentMealData or currentMealData['recipes'] is null.");
+                                  print(
+                                      "SEARCH_DEBUG: currentMealData or currentMealData['recipes'] is null.");
                                 }
                                 // ==== DEBUG PRINTS END ====
-                                
-                                isAlreadyAdded = value.currentMealData['recipes'].contains(item.id);
+
+                                isAlreadyAdded = value
+                                    .currentMealData['recipes']
+                                    .contains(item.id);
                               } else if (item is UserRecipe) {
                                 title = item.name;
                                 imageUrl = item.imageUrl ?? '';
                                 // UserRecipes are not in currentMealData by ID, so isAlreadyAdded is effectively false for search
                                 // unless we implement a more complex check (e.g. by name, if that makes sense)
                                 // For now, allow adding.
-                                isAlreadyAdded = false; 
+                                isAlreadyAdded = false;
                               } else {
-                                return const SizedBox.shrink(); // Should not happen
+                                return const SizedBox
+                                    .shrink(); // Should not happen
                               }
 
                               return MyRecipeItem(
@@ -378,29 +411,48 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                   imgUrl: imageUrl,
                                   // isUserAdded: item is UserRecipe, // Optional: for MyRecipeItem styling
                                   onPressed: isAlreadyAdded
-                                    ? null
-                                    : () {
-                                        final currentRecipeList = Provider.of<RecipeList>(context, listen: false);
-                                        final Map<String, dynamic> times = context.read<UserSettings>().schedule;
-                                        
-                                        if (item is UserRecipe) {
-                                          // Removed newId generation
-                                          // Changed Recipe.fromUserRecipe(item, newId) to Recipe.fromUserRecipe(item as UserRecipe)
-                                          final recipeToAdd = Recipe.fromUserRecipe(item as UserRecipe);
-                                          currentRecipeList.addRecipe(recipeToAdd, value.currentMealData['mealTitle'], times);
-                                          _notifyAdded(context, recipeToAdd);
-                                        } else if (item is Recipe) {
-                                          currentRecipeList.addRecipe(item, value.currentMealData['mealTitle'], times);
-                                          _notifyAdded(context, item);
-                                        }
-                                      },
+                                      ? null
+                                      : () {
+                                          final currentRecipeList =
+                                              Provider.of<RecipeList>(context,
+                                                  listen: false);
+                                          final Map<String, dynamic> times =
+                                              context
+                                                  .read<UserSettings>()
+                                                  .schedule;
+
+                                          if (item is UserRecipe) {
+                                            // Removed newId generation
+                                            // Changed Recipe.fromUserRecipe(item, newId) to Recipe.fromUserRecipe(item as UserRecipe)
+                                            final recipeToAdd =
+                                                Recipe.fromUserRecipe(item);
+                                            currentRecipeList.addRecipe(
+                                                recipeToAdd,
+                                                value.currentMealData[
+                                                    'mealTitle'],
+                                                times);
+                                            _notifyAdded(context, recipeToAdd);
+                                          } else if (item is Recipe) {
+                                            currentRecipeList.addRecipe(
+                                                item,
+                                                value.currentMealData[
+                                                    'mealTitle'],
+                                                times);
+                                            _notifyAdded(context, item);
+                                          }
+                                        },
                                   onTap: () {
                                     if (item is Recipe) {
-                                       Navigator.pushNamed(context, '/recipe_insights_page', arguments: item);
+                                      Navigator.pushNamed(
+                                          context, '/recipe_insights_page',
+                                          arguments: item);
                                     } else if (item is UserRecipe) {
-                                       // Changed Recipe.fromUserRecipe(item, 0 - item.hashCode) to Recipe.fromUserRecipe(item as UserRecipe)
-                                       final tempRecipeForInsight = Recipe.fromUserRecipe(item as UserRecipe);
-                                       Navigator.pushNamed(context, '/recipe_insights_page', arguments: tempRecipeForInsight);
+                                      // Changed Recipe.fromUserRecipe(item, 0 - item.hashCode) to Recipe.fromUserRecipe(item as UserRecipe)
+                                      final tempRecipeForInsight =
+                                          Recipe.fromUserRecipe(item);
+                                      Navigator.pushNamed(
+                                          context, '/recipe_insights_page',
+                                          arguments: tempRecipeForInsight);
                                     }
                                   },
                                   icon: isAlreadyAdded
@@ -435,7 +487,7 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                           ),
                         )
                       // Display current meal's recipes if not searching
-                      : Expanded( 
+                      : Expanded(
                           child: ReorderableListView.builder(
                             onReorder: (oldIndex, newIndex) => updateOrder(
                                 oldIndex,
@@ -443,18 +495,25 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                 value.currentMealData['recipes'][oldIndex]),
                             itemCount: value.currentMealData['recipes'].length,
                             itemBuilder: (context, index) {
-                              final Recipe recipe = value.recipesList
-                                  .firstWhere((recipe) =>
-                                      recipe.id ==
-                                      value.currentMealData['recipes'][index],
-                                      // Changed orElse id from -1 to "_error_not_found_"
-                                      orElse: () => Recipe(id: "_error_not_found_", title: "Error - Not Found", nutrients: [], category: 'Error'), 
-                                      );
+                              final Recipe recipe =
+                                  value.recipesList.firstWhere(
+                                (recipe) =>
+                                    recipe.id ==
+                                    value.currentMealData['recipes'][index],
+                                // Changed orElse id from -1 to "_error_not_found_"
+                                orElse: () => Recipe(
+                                    id: "_error_not_found_",
+                                    title: "Error - Not Found",
+                                    nutrients: [],
+                                    category: 'Error'),
+                              );
                               // Check against the string error ID
-                              if (recipe.id == "_error_not_found_") return const SizedBox.shrink(); 
+                              if (recipe.id == "_error_not_found_")
+                                return const SizedBox.shrink();
 
                               return MyRecipeItem(
-                                key: ValueKey<String>(recipe.id), // Optionally ValueKey<String>
+                                key: ValueKey<String>(
+                                    recipe.id), // Optionally ValueKey<String>
                                 title: recipe.title,
                                 imgUrl: recipe.imgUrl,
                                 onPressed: () => value.removeRecipe(recipe),
@@ -495,9 +554,9 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                     final XFile? pickedFile =
                         await picker.pickImage(source: ImageSource.camera);
                     if (context.mounted) {
-                       // pickAndProcessImage calls the old fetchRecipes (now fetchApiRecipes)
-                       // This part is not covered by the Future.wait fix for manual search
-                       // but the subtask is focused on manual text search.
+                      // pickAndProcessImage calls the old fetchRecipes (now fetchApiRecipes)
+                      // This part is not covered by the Future.wait fix for manual search
+                      // but the subtask is focused on manual text search.
                       pickAndProcessImage(context, pickedFile);
                     }
                   }),

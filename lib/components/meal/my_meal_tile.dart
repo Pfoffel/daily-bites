@@ -81,8 +81,8 @@ class MyMealTile extends StatelessWidget {
                         return CircularProgressIndicator();
                       }
 
-                      final recipe = value.recipesList.firstWhere(
-                          (recipe) => recipe.id == recipeList[index]);
+                      final recipe = value.recipesList.firstWhere((recipe) =>
+                          recipe.id == recipeList[index].toString());
                       return MyMealCircle(imgUrl: recipe.imgUrl);
                     },
                   ),
