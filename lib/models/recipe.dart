@@ -1,7 +1,7 @@
 import 'package:health_app_v1/models/user_recipe.dart';
 
 class Recipe {
-  final int id;
+  final String id; // Changed from int to String
   final String title;
   final String imageUrl;
   final String type;
@@ -35,7 +35,7 @@ class Recipe {
 
   Map<String, dynamic> getMetaData() {
     return {
-      "id": id.toString(),
+      "id": id, // id is already a String
       "title": title,
       "imageUrl": imgUrl,
       "type": type,
@@ -48,29 +48,50 @@ class Recipe {
   }
 
   factory Recipe.fromMap(Map<String, dynamic> map) {
+    dynamic idValue = map['id'];
+    String finalId;
+    if (idValue == null) {
+      // Consider how to handle this case. For now, let's assume Spoonacular IDs are usually ints.
+      // If this map can come from other sources where ID might be missing, this needs robust handling.
+      // For Spoonacular IDs, they are typically integers.
+      // If 'id' can be legitimately null or missing for other recipe types, adjust logic.
+      // For this specific conversion, if it's from Spoonacular, an ID should exist.
+      // If converting from a user's own recipe map where ID might be a string already:
+      throw ArgumentError('Recipe ID from map cannot be null'); 
+    } else if (idValue is int) {
+      finalId = idValue.toString();
+    } else if (idValue is String) {
+      finalId = idValue;
+    } else {
+      throw ArgumentError('Recipe ID from map must be a String or an int, got ${idValue.runtimeType}');
+    }
+
     return Recipe(
-      id: map['id'] as int,
+      id: finalId,
       title: map['title'] as String,
-      imageUrl: map['imgUrl'] as String? ?? '', // Provide default if null
-      type: map['type'] as String? ?? '',       // Provide default if null
+      imageUrl: map['imgUrl'] as String? ?? '',
+      type: map['type'] as String? ?? '',
       nutrients: map['nutrients'] as List,
       category: map['category'] as String,
     );
   }
 
-  factory Recipe.fromUserRecipe(UserRecipe userRecipe, int newId) {
+  factory Recipe.fromUserRecipe(UserRecipe userRecipe) { // Removed newId parameter
+    if (userRecipe.id == null) {
+      throw ArgumentError('UserRecipe ID cannot be null when converting to Recipe');
+    }
     return Recipe(
-      id: newId, // This ID needs to be managed carefully by RecipeList
+      id: userRecipe.id!, // Use UserRecipe's Firestore document ID (now a String)
       title: userRecipe.name,
       imageUrl: userRecipe.imageUrl ?? '',
       type: userRecipe.imageUrl != null && userRecipe.imageUrl!.toLowerCase().endsWith('.png') ? 'png' : (userRecipe.imageUrl != null && (userRecipe.imageUrl!.toLowerCase().endsWith('.jpg') || userRecipe.imageUrl!.toLowerCase().endsWith('.jpeg')) ? 'jpg' : ''),
       nutrients: [
-        {'name': 'Calories', 'amount': userRecipe.calories, 'unit': 'kcal'}, // Assuming Spoonacular format
+        {'name': 'Calories', 'amount': userRecipe.calories, 'unit': 'kcal'},
         {'name': 'Protein', 'amount': userRecipe.protein, 'unit': 'g'},
         {'name': 'Carbohydrates', 'amount': userRecipe.carbs, 'unit': 'g'},
         {'name': 'Fat', 'amount': userRecipe.fat, 'unit': 'g'},
       ],
-      category: 'User Added', // Or some other suitable category
+      category: 'User Added',
     );
   }
 

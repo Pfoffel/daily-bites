@@ -32,7 +32,7 @@ class ConnectDb extends ChangeNotifier {
   final List _initializeMeals = [
     {
       'mealTitle': 'Breakfast',
-      'recipes': [0]
+      'recipes': ["0"] // Changed 0 to "0"
     },
     {'mealTitle': 'Lunch', 'recipes': []},
     {'mealTitle': 'Dinner', 'recipes': []}
@@ -61,7 +61,7 @@ class ConnectDb extends ChangeNotifier {
   final Map<String, List<Map<String, dynamic>>> _defaultRecipes = {
     'recipes': [
       {
-        'id': 0,
+        'id': "0", // Changed 0 to "0"
         'title': 'Apple',
         'imgUrl': "https://img.spoonacular.com/ingredients_100x100/apple.jpg",
         'type': 'jpg',
@@ -124,7 +124,7 @@ class ConnectDb extends ChangeNotifier {
   CollectionReference get recipes => _recipes;
   CollectionReference get mood => _mood;
   List get defaultMeals =>
-      (_recipesList.indexWhere((recipe) => recipe.id == 0) > -1)
+      (_recipesList.indexWhere((recipe) => recipe.id == "0") > -1) // Changed recipe.id == 0 to recipe.id == "0"
           ? _defaultMeals
           : _initializeMeals;
   List get defaultMoods => _defaultMoods;

@@ -6,7 +6,6 @@ import 'package:health_app_v1/models/mood.dart';
 import 'package:health_app_v1/models/user_settings.dart';
 import 'package:health_app_v1/models/recipe_list.dart';
 import 'package:health_app_v1/pages/customization/survey_page.dart';
-import 'package:health_app_v1/pages/meal/add_custom_recipe_page.dart';
 import 'package:health_app_v1/pages/meal/list_recipes_page.dart';
 import 'package:health_app_v1/pages/auth/main_page.dart';
 import 'package:health_app_v1/pages/drawer/notification_page.dart';
@@ -68,7 +67,6 @@ class MainApp extends StatelessWidget {
         '/main_page': (context) => const MainPage(),
         '/mood_page': (context) => const MoodPage(),
         '/survey_page': (context) => const SurveyPage(),
-        '/add_custom_recipe_page': (context) => const AddCustomRecipePage(),
       },
       theme: ThemeData(
         useMaterial3: true,

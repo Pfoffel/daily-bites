@@ -8,6 +8,29 @@ import 'package:intl/intl.dart';
 class RecipeList extends ChangeNotifier {
   bool _initialized = false;
 
+  List _convertMealListRecipeIdsToString(List rawMealList) {
+    return rawMealList.map((meal) {
+      if (meal is Map<String, dynamic> && meal.containsKey('recipes') && meal['recipes'] is List) {
+        final List<dynamic> originalRecipeIds = meal['recipes'];
+        final List<String> newRecipeIds = originalRecipeIds.map((id) {
+          if (id is int) {
+            return id.toString();
+          } else if (id is String) {
+            return id;
+          }
+          // Handle other unexpected types or null if necessary, though Firestore should give int/string
+          return ''; // Or throw, or filter out invalid IDs
+        }).where((id) => id.isNotEmpty).toList(); // Filter out empty strings if used as placeholder for invalid
+        
+        // Create a new map to avoid modifying the original input map directly if it's from a stream
+        final newMeal = Map<String, dynamic>.from(meal);
+        newMeal['recipes'] = newRecipeIds;
+        return newMeal;
+      }
+      return meal; // Return as is if not a processable meal map
+    }).toList();
+  }
+
   final List<Recipe> _recipesList = [];
   final List _mealList = [];
   final Map<String, dynamic> _currentMealdata = {};
@@ -34,7 +57,8 @@ class RecipeList extends ChangeNotifier {
   void initializeRecipes(List<Recipe> recipes, List mealsDay) {
     if (_initialized) return;
     _recipesList.addAll(recipes);
-    _mealList.addAll(mealsDay);
+    final processedMealsDay = _convertMealListRecipeIdsToString(mealsDay);
+    _mealList.addAll(processedMealsDay);
     _initialized = true;
   }
 
@@ -81,7 +105,8 @@ class RecipeList extends ChangeNotifier {
 
   void setCurrentDayMeal(List mealList) {
     _mealList.clear();
-    _mealList.addAll(mealList);
+    final processedMealList = _convertMealListRecipeIdsToString(mealList);
+    _mealList.addAll(processedMealList);
     notifyListeners();
   }
 
@@ -120,9 +145,9 @@ class RecipeList extends ChangeNotifier {
   }
 
   void removeRecipe(Recipe recipe) {
-    final int title = recipe.id;
+    final String recipeId = recipe.id; // Changed from int title to String recipeId
     _currentMealdata['recipes'].removeWhere(
-      (element) => element == title,
+      (element) => element == recipeId, // Compare with recipeId
     );
     _mealList.removeAt(_currentMeal);
     _mealList.insert(_currentMeal, currentMealData);
@@ -155,19 +180,26 @@ class RecipeList extends ChangeNotifier {
     notifyListeners();
   }
 
-  Recipe getRecipe(int id) {
+  Recipe getRecipe(String id) { // Changed signature from int id to String id
     return _recipesList.firstWhere((recipe) => recipe.id == id);
   }
 
   Map<String, double> sumNutrients(List mealsDay) {
+    // Process mealsDay here as well to ensure IDs are strings before getRecipe is called
+    // if mealsDay can come from an unprocessed source directly.
+    // However, if sumNutrients is always called with _mealList (which is processed),
+    // or if mealsDay is guaranteed to be processed by the caller, this might be redundant.
+    // For safety, let's process it, assuming mealsDay might not always be _mealList.
+    final processedMealsDay = _convertMealListRecipeIdsToString(mealsDay);
     _totalCarbs = 0.0;
     _totalProteins = 0.0;
     _totalFats = 0.0;
-    for (var meal in mealsDay) {
+    for (var meal in processedMealsDay) { // Iterate over processedMealsDay
       if (meal != null) {
-        for (var id in meal['recipes']) {
-          if (id != null) {
-            final Recipe recipe = getRecipe(id);
+        // meal['recipes'] should now be List<String>
+        for (var id_str in meal['recipes']) { // id is now string, renamed to id_str for clarity
+          if (id_str != null && id_str.isNotEmpty) { // Ensure id_str is not null or empty
+            final Recipe recipe = getRecipe(id_str); // Pass String id_str
             _totalCarbs += recipe.getNutrients('Carbohydrates');
             _totalProteins += recipe.getNutrients('Protein');
             _totalFats += recipe.getNutrients('Fat');
