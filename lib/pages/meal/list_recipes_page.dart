@@ -323,6 +323,22 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                             itemCount: displayableItems.length,
                             itemBuilder: (context, index) {
                               final dynamic item = displayableItems[index];
+
+                              // ==== NEW TOP-LEVEL DEBUG PRINT ====
+                              if (item == null) {
+                                print("SEARCH_ITEM_DEBUG: Item at index $index is NULL.");
+                              } else {
+                                String itemIdStr = "N/A";
+                                String itemTypeStr = item.runtimeType.toString();
+                                if (item is Recipe) {
+                                  itemIdStr = "ID: ${item.id} (Type: ${item.id.runtimeType})";
+                                } else if (item is UserRecipe) {
+                                  itemIdStr = "ID: ${item.id} (Type: ${item.id?.runtimeType ?? 'null ID'})";
+                                }
+                                print("SEARCH_ITEM_DEBUG: Index: $index, ItemType: $itemTypeStr, $itemIdStr, Title/Name: ${item is Recipe ? item.title : (item is UserRecipe ? item.name : 'N/A')}");
+                              }
+                              // ==== END NEW TOP-LEVEL DEBUG PRINT ====
+
                               String title, imageUrl;
                               bool isAlreadyAdded = false;
                               // Changed int currentItemIdForCheck = -1 to String? currentItemIdForCheck = null;

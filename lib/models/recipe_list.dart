@@ -18,9 +18,19 @@ class RecipeList extends ChangeNotifier {
           } else if (id is String) {
             return id;
           }
-          // Handle other unexpected types or null if necessary, though Firestore should give int/string
-          return ''; // Or throw, or filter out invalid IDs
-        }).where((id) => id.isNotEmpty).toList(); // Filter out empty strings if used as placeholder for invalid
+          // For IDs that are neither int nor String (e.g. null, or other types)
+          // Decide on a strategy: filter them out, replace with a placeholder, or throw.
+          // Current: replace with empty string, then filter out empty.
+          // This might be too silent if an ID is unexpectedly null.
+          // Consider logging an error for null or unexpected types here.
+          if (id == null) {
+            print("RecipeList._convertMealListRecipeIdsToString: Found null recipe ID in meal: $meal");
+            return ''; // Will be filtered by where((id) => id.isNotEmpty)
+          } else {
+            print("RecipeList._convertMealListRecipeIdsToString: Found recipe ID of unexpected type ${id.runtimeType} ('$id') in meal: $meal");
+            return ''; // Will be filtered
+          }
+        }).where((id) => id.isNotEmpty).toList();
         
         // Create a new map to avoid modifying the original input map directly if it's from a stream
         final newMeal = Map<String, dynamic>.from(meal);
@@ -102,21 +112,28 @@ class RecipeList extends ChangeNotifier {
 
     if (mealIndex >= 0 && mealIndex < _mealList.length) {
       // Ensure the specific meal object's recipe IDs are strings before assigning to _currentMealdata
-      final Map<String, dynamic> originalMealData = Map<String, dynamic>.from(_mealList[mealIndex]);
-      
-      if (originalMealData.containsKey('recipes') && originalMealData['recipes'] is List) {
-        final List<dynamic> originalRecipeIds = originalMealData['recipes'];
+      final Map<String, dynamic> mealFromList = Map<String, dynamic>.from(_mealList[mealIndex]);
+      // This mealFromList should ideally already have string IDs due to above methods.
+      // The explicit processing here is a safeguard.
+      if (mealFromList.containsKey('recipes') && mealFromList['recipes'] is List) {
+        final List<dynamic> originalRecipeIds = mealFromList['recipes'];
         final List<String> newRecipeIds = originalRecipeIds.map((id) {
           if (id is int) {
             return id.toString();
           } else if (id is String) {
             return id;
           }
-          return ''; // Or handle error appropriately
+          if (id == null) {
+            print("RecipeList.setCurrentMeal: Found null recipe ID in meal being set as current: $mealFromList");
+            return ''; 
+          } else {
+            print("RecipeList.setCurrentMeal: Found recipe ID of unexpected type ${id.runtimeType} ('$id') in meal being set as current: $mealFromList");
+            return ''; 
+          }
         }).where((id) => id.isNotEmpty).toList();
-        originalMealData['recipes'] = newRecipeIds;
+        mealFromList['recipes'] = newRecipeIds;
       }
-      _currentMealdata.addAll(originalMealData);
+      _currentMealdata.addAll(mealFromList);
     }
     notifyListeners();
   }

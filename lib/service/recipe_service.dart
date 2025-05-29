@@ -19,14 +19,15 @@ class RecipeService {
         final data = json.decode(response.body);
         final List<Recipe> recipes = [];
         for (var recipeData in data['results']) {
-          final recipe = Recipe(
-              id: recipeData['id'],
-              title: recipeData['title'],
-              imageUrl: recipeData['image'],
-              nutrients: recipeData['nutrition']['nutrients'],
-              category: 'Recipes'
-              // for ingredients use: https://img.spoonacular.com/ingredients_100x100/"imagepath"
-              );
+          final Map<String, dynamic> recipeMapForFromMap = {
+            'id': recipeData['id'],
+            'title': recipeData['title'],
+            'imgUrl': recipeData['image'], // map 'image' to 'imgUrl'
+            'type': recipeData['imageType'], // Spoonacular often provides imageType
+            'nutrients': recipeData['nutrition']?['nutrients'] ?? [], // Ensure nutrients list exists
+            'category': 'Recipes', // Set category
+          };
+          final recipe = Recipe.fromMap(recipeMapForFromMap);
           recipes.add(recipe);
         }
         return recipes;
@@ -91,13 +92,15 @@ class RecipeService {
         final data = json.decode(response.body);
         final List<Recipe> products = [];
         for (var item in data['products']) {
-          final Recipe product = Recipe(
-            id: item['id'],
-            title: item['title'],
-            type: item['imageType'],
-            nutrients: item['nutrition']['nutrients'],
-            category: 'Products',
-          );
+          final Map<String, dynamic> productMapForFromMap = {
+            'id': item['id'],
+            'title': item['title'],
+            'imgUrl': item['image'], // product 'image' is usually a full URL
+            'type': item['imageType'], 
+            'nutrients': item['nutrition']?['nutrients'] ?? [],
+            'category': 'Products',
+          };
+          final Recipe product = Recipe.fromMap(productMapForFromMap);
           products.add(product);
         }
 
@@ -128,13 +131,15 @@ class RecipeService {
           if (results.isNotEmpty) {
             for (var result in results['results']) {
               if (await isValidUrl(result['image'])) {
-                final Recipe food = Recipe(
-                  id: result['id'],
-                  title: result['name'],
-                  imageUrl: result['image'],
-                  nutrients: [],
-                  category: category,
-                );
+                final Map<String, dynamic> foodMapForFromMap = {
+                  'id': result['id'],
+                  'title': result['name'],
+                  'imgUrl': result['image'],
+                  'type': null, // General food search might not provide 'imageType'
+                  'nutrients': [], // Correctly empty, to be filled by addNutrients
+                  'category': category,
+                };
+                final Recipe food = Recipe.fromMap(foodMapForFromMap);
                 products.add(food);
               }
             }
@@ -160,7 +165,7 @@ class RecipeService {
   }
 
   Future<Recipe> addNutrients(Recipe recipe) async {
-    final int id = recipe.id;
+    final String id = recipe.id; // Changed from int to String
     final String category = recipe.category;
     List updatedNutrients = [];
     final String urlRecipes =
