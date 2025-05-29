@@ -44,7 +44,8 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
       if (user == null) {
         // Handle user not logged in
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You need to be logged in to add a recipe.')),
+          const SnackBar(
+              content: Text('You need to be logged in to add a recipe.')),
         );
         setState(() {
           _isLoading = false;
@@ -58,28 +59,27 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
         protein: double.parse(_proteinController.text),
         carbs: double.parse(_carbsController.text),
         fat: double.parse(_fatController.text),
-        imageUrl: _imageUrlController.text.isEmpty ? null : _imageUrlController.text,
+        imageUrl:
+            _imageUrlController.text.isEmpty ? null : _imageUrlController.text,
         userId: user.uid,
         createdAt: Timestamp.now(),
       );
 
       try {
-        // We'll add the ConnectDb logic in the next step
-        // For now, let's just simulate a delay
-        // await Future.delayed(const Duration(seconds: 1)); 
-        
         final connectDb = Provider.of<ConnectDb>(context, listen: false);
         await connectDb.addSharedRecipe(newRecipe);
-
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Recipe added successfully!')),
-        );
-        Navigator.of(context).pop();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Recipe added successfully!')),
+          );
+          Navigator.of(context).pop();
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add recipe: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add recipe: $e')),
+          );
+        }
       } finally {
         setState(() {
           _isLoading = false;
@@ -168,10 +168,13 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
               ),
               TextFormField(
                 controller: _imageUrlController,
-                decoration: const InputDecoration(labelText: 'Image URL (Optional)'),
+                decoration:
+                    const InputDecoration(labelText: 'Image URL (Optional)'),
                 keyboardType: TextInputType.url,
                 validator: (value) {
-                  if (value != null && value.isNotEmpty && !Uri.parse(value).isAbsolute) {
+                  if (value != null &&
+                      value.isNotEmpty &&
+                      !Uri.parse(value).isAbsolute) {
                     return 'Please enter a valid URL';
                   }
                   return null;

@@ -461,10 +461,10 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                     nutrients: [],
                                     category: 'Error'), // Safety net
                               );
-                              if (recipe.id == -1)
+                              if (recipe.id == -1) {
                                 return const SizedBox
                                     .shrink(); // Don't render if recipe not found
-
+                              }
                               return MyRecipeItem(
                                 key: ValueKey(recipe.id),
                                 title: recipe.title,
