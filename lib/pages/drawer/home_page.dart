@@ -41,6 +41,63 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Map<String, dynamic> convertRecipeIntsToStrings(
+      Map<String, dynamic> mealsByDate) {
+    // Create a new map to store the transformed data to avoid modifying the original directly
+    // unless that's your explicit intent (which is generally discouraged for complex objects).
+    Map<String, dynamic> newMealsByDate = {};
+
+    mealsByDate.forEach((date, mealsForDate) {
+      if (mealsForDate is List) {
+        List<Map<String, dynamic>> newMealsForDate = [];
+
+        for (var mealEntry in mealsForDate) {
+          if (mealEntry is Map<String, dynamic>) {
+            // Create a new map for the meal entry to modify it
+            Map<String, dynamic> newMealEntry = Map.from(mealEntry);
+
+            if (newMealEntry.containsKey('recipes')) {
+              var recipes = newMealEntry['recipes'];
+
+              if (recipes is List) {
+                // Map each item in the recipes list.
+                // We'll convert each item to a String, ensuring it's not null.
+                newMealEntry['recipes'] = recipes
+                    .map((recipeId) {
+                      if (recipeId is int) {
+                        return recipeId.toString();
+                      } else if (recipeId != null) {
+                        // Handle cases where it might already be a string or other type
+                        return recipeId.toString();
+                      }
+                      return null; // Handle null entries if they exist
+                    })
+                    .where((e) =>
+                        e !=
+                        null) // Remove any null entries if they occurred from null recipeIds
+                    .toList()
+                    .cast<
+                        String>(); // Ensure the list contains only Strings after conversion
+              } else if (recipes == null) {
+                // If 'recipes' is null, keep it null or set to empty list as per your requirement
+                newMealEntry['recipes'] =
+                    []; // Or [] if you prefer empty list over null
+              }
+              // If 'recipes' is not a List or null, it's left as is.
+            }
+            newMealsForDate.add(newMealEntry);
+          }
+        }
+        newMealsByDate[date] = newMealsForDate;
+      } else {
+        // If the value for a date is not a List (unexpected format), copy it as is.
+        newMealsByDate[date] = mealsForDate;
+      }
+    });
+
+    return newMealsByDate;
+  }
+
   @override
   Widget build(BuildContext context) {
     final EdgeInsets marginContainer =
@@ -74,14 +131,14 @@ class _HomePageState extends State<HomePage> {
               ));
             }
 
-            final userMeals = snapshot.data!.data() as Map<String, dynamic>;
+            Map<String, dynamic> userMeals =
+                snapshot.data!.data() as Map<String, dynamic>;
 
             if (!userMeals.containsKey(date.sanitizedDate)) {
               db.updateMeal({date.sanitizedDate: _defaultMeals});
               userMeals.addEntries({date.sanitizedDate: _defaultMeals}.entries);
             }
-
-            print(userMeals);
+            userMeals = convertRecipeIntsToStrings(userMeals);
 
             mealList = userMeals[date.sanitizedDate];
             final Map<String, double> totalNutrients =

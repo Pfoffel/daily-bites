@@ -143,7 +143,6 @@ class RecipeService {
                       [], // Correctly empty, to be filled by addNutrients
                   'category': category,
                 };
-                print("Here: $foodMapForFromMap");
                 final Recipe food = Recipe.fromMap(foodMapForFromMap);
                 products.add(food);
               }

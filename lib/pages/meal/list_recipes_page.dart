@@ -40,11 +40,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
   // Changed signature to Future<void> async
   Future<void> fetchApiRecipes(List queries, List categories) async {
     final List<Recipe> results = [];
-    // Removed setState from here:
-    // setState(() {
-    //   isLoading = true;
-    //   isSearching = true;
-    // });
 
     final recipeService = Provider.of<RecipeService>(context, listen: false);
     for (var query in queries) {
@@ -52,8 +47,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
       results.addAll(result);
     }
     apiRecipes = results;
-    // combineAndDisplayRecipes will be called after both API and shared recipes are fetched
-    // For standalone API search (if ever needed), call combineAndDisplayRecipes here.
   }
 
   Future<void> fetchSharedRecipes() async {
@@ -170,19 +163,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
           } finally {
             combineAndDisplayRecipes();
           }
-
-          // After fetchApiRecipes, we might need to consider fetching shared recipes too
-          // and then calling combineAndDisplayRecipes. For now, just fix the name.
-          // To make it consistent with text search, it should be:
-          // setState(() { isLoading = true; isSearching = true; }); // if not already set
-          // await Future.wait([
-          //   fetchApiRecipes(ingredients, ['Simple Foods']),
-          //   fetchSharedRecipes(), // This might need adjustment if we want to filter shared by ingredients
-          // ]);
-          // combineAndDisplayRecipes();
-          // For now, the scope is just to fix the function name.
-          // The existing behavior of image search only showing API results will remain
-          // until we decide to enhance it.
           return;
         }
         if (context.mounted) {
@@ -312,8 +292,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                 'Dismiss', () {});
                           }
                         } finally {
-                          // combineAndDisplayRecipes will be called here,
-                          // which internally calls setState and sets isLoading = false
                           combineAndDisplayRecipes();
                         }
                       } else {
@@ -400,7 +378,9 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                 // UserRecipes are not in currentMealData by ID, so isAlreadyAdded is effectively false for search
                                 // unless we implement a more complex check (e.g. by name, if that makes sense)
                                 // For now, allow adding.
-                                isAlreadyAdded = false;
+                                isAlreadyAdded = value
+                                    .currentMealData['recipes']
+                                    .contains(item.id);
                               } else {
                                 return const SizedBox
                                     .shrink(); // Should not happen
