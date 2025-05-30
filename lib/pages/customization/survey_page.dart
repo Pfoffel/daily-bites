@@ -5,10 +5,10 @@ class SurveyPage extends StatefulWidget {
   const SurveyPage({super.key});
 
   @override
-  _SurveyPageState createState() => _SurveyPageState();
+  SurveyPageState createState() => SurveyPageState();
 }
 
-class _SurveyPageState extends State<SurveyPage> {
+class SurveyPageState extends State<SurveyPage> {
   // Create a list of GlobalKeys, one for each page's Form
   final List<GlobalKey<FormState>> _formKeys = List.generate(
     5, // Assuming 5 pages (0 to 4) based on your PageView children

@@ -50,8 +50,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
   }
 
   Future<void> fetchSharedRecipes() async {
-    // No need to set isLoading here as fetchApiRecipes would have set it
-    // if search term is not empty.
     if (_searchController.text.isNotEmpty) {
       final connectDb = Provider.of<ConnectDb>(context, listen: false);
       List<UserRecipe> allShared = await connectDb.getSharedRecipes();
@@ -148,7 +146,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
       if (context.mounted && response.text != null) {
         List ingredients = gemini.parseAiJson(context, response.text!) ?? [];
         if (ingredients.isNotEmpty) {
-          // fetchRecipes(ingredients, ['Simple Foods']); // OLD LINE
           try {
             await Future.wait([
               fetchApiRecipes(ingredients, ['Simple Foods']),
@@ -156,7 +153,7 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
             ]);
           } catch (e) {
             print("Error fetching recipes: $e");
-            if (mounted) {
+            if (context.mounted) {
               showMySnackBar(
                   context, 'Error fetching recipes', 'Dismiss', () {});
             }
@@ -287,7 +284,7 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                           ]);
                         } catch (e) {
                           print("Error fetching recipes: $e");
-                          if (mounted) {
+                          if (context.mounted) {
                             showMySnackBar(context, 'Error fetching recipes',
                                 'Dismiss', () {});
                           }
@@ -321,63 +318,18 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                             itemBuilder: (context, index) {
                               final dynamic item = displayableItems[index];
 
-                              // ==== NEW TOP-LEVEL DEBUG PRINT ====
-                              if (item == null) {
-                                print(
-                                    "SEARCH_ITEM_DEBUG: Item at index $index is NULL.");
-                              } else {
-                                String itemIdStr = "N/A";
-                                String itemTypeStr =
-                                    item.runtimeType.toString();
-                                if (item is Recipe) {
-                                  itemIdStr =
-                                      "ID: ${item.id} (Type: ${item.id.runtimeType})";
-                                } else if (item is UserRecipe) {
-                                  itemIdStr =
-                                      "ID: ${item.id} (Type: ${item.id?.runtimeType ?? 'null ID'})";
-                                }
-                                print(
-                                    "SEARCH_ITEM_DEBUG: Index: $index, ItemType: $itemTypeStr, $itemIdStr, Title/Name: ${item is Recipe ? item.title : (item is UserRecipe ? item.name : 'N/A')}");
-                              }
-                              // ==== END NEW TOP-LEVEL DEBUG PRINT ====
-
                               String title, imageUrl;
                               bool isAlreadyAdded = false;
-                              // Changed int currentItemIdForCheck = -1 to String? currentItemIdForCheck = null;
-                              String? currentItemIdForCheck;
 
                               if (item is Recipe) {
                                 title = item.title;
                                 imageUrl = item.imgUrl;
-                                currentItemIdForCheck =
-                                    item.id; // item.id should be String here
-
-                                // ==== DEBUG PRINTS START ====
-                                print(
-                                    "SEARCH_DEBUG: Item is Recipe. Title: '${item.title}', ID: '${item.id}' (Type: ${item.id.runtimeType})");
-                                if (value.currentMealData['recipes'] != null) {
-                                  print(
-                                      "SEARCH_DEBUG: currentMealData['recipes'] content: ${value.currentMealData['recipes']}");
-                                  for (var recipeIdInMeal in (value
-                                      .currentMealData['recipes'] as List)) {
-                                    print(
-                                        "SEARCH_DEBUG: Meal recipe ID: '$recipeIdInMeal' (Type: ${recipeIdInMeal.runtimeType})");
-                                  }
-                                } else {
-                                  print(
-                                      "SEARCH_DEBUG: currentMealData or currentMealData['recipes'] is null.");
-                                }
-                                // ==== DEBUG PRINTS END ====
-
                                 isAlreadyAdded = value
                                     .currentMealData['recipes']
                                     .contains(item.id);
                               } else if (item is UserRecipe) {
                                 title = item.name;
                                 imageUrl = item.imageUrl ?? '';
-                                // UserRecipes are not in currentMealData by ID, so isAlreadyAdded is effectively false for search
-                                // unless we implement a more complex check (e.g. by name, if that makes sense)
-                                // For now, allow adding.
                                 isAlreadyAdded = value
                                     .currentMealData['recipes']
                                     .contains(item.id);
@@ -389,7 +341,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                               return MyRecipeItem(
                                   title: title,
                                   imgUrl: imageUrl,
-                                  // isUserAdded: item is UserRecipe, // Optional: for MyRecipeItem styling
                                   onPressed: isAlreadyAdded
                                       ? null
                                       : () {
@@ -402,8 +353,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                                   .schedule;
 
                                           if (item is UserRecipe) {
-                                            // Removed newId generation
-                                            // Changed Recipe.fromUserRecipe(item, newId) to Recipe.fromUserRecipe(item as UserRecipe)
                                             final recipeToAdd =
                                                 Recipe.fromUserRecipe(item);
                                             currentRecipeList.addRecipe(
@@ -427,7 +376,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                           context, '/recipe_insights_page',
                                           arguments: item);
                                     } else if (item is UserRecipe) {
-                                      // Changed Recipe.fromUserRecipe(item, 0 - item.hashCode) to Recipe.fromUserRecipe(item as UserRecipe)
                                       final tempRecipeForInsight =
                                           Recipe.fromUserRecipe(item);
                                       Navigator.pushNamed(
@@ -488,8 +436,9 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                                     category: 'Error'),
                               );
                               // Check against the string error ID
-                              if (recipe.id == "_error_not_found_")
+                              if (recipe.id == "_error_not_found_") {
                                 return const SizedBox.shrink();
+                              }
 
                               return MyRecipeItem(
                                 key: ValueKey<String>(
@@ -534,9 +483,6 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
                     final XFile? pickedFile =
                         await picker.pickImage(source: ImageSource.camera);
                     if (context.mounted) {
-                      // pickAndProcessImage calls the old fetchRecipes (now fetchApiRecipes)
-                      // This part is not covered by the Future.wait fix for manual search
-                      // but the subtask is focused on manual text search.
                       pickAndProcessImage(context, pickedFile);
                     }
                   }),

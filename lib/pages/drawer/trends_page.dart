@@ -346,8 +346,8 @@ class MoodTrendChart extends StatelessWidget {
                         show: true,
                         gradient: LinearGradient(
                           colors: [
-                            Colors.blue.shade200.withOpacity(0.3),
-                            Colors.blue.shade800.withOpacity(0.3),
+                            Colors.blue.shade200.withValues(alpha: 0.3),
+                            Colors.blue.shade800.withValues(alpha: 0.3),
                           ],
                         ),
                       ),
@@ -720,8 +720,8 @@ class IngredientDiversityGraph extends StatelessWidget {
                         show: true,
                         gradient: LinearGradient(
                           colors: [
-                            Colors.green.shade200.withOpacity(0.3),
-                            Colors.green.shade800.withOpacity(0.3),
+                            Colors.green.shade200.withValues(alpha: 0.3),
+                            Colors.green.shade800.withValues(alpha: 0.3),
                           ],
                         ),
                       ),

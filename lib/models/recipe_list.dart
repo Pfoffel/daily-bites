@@ -10,28 +10,35 @@ class RecipeList extends ChangeNotifier {
 
   List _convertMealListRecipeIdsToString(List rawMealList) {
     return rawMealList.map((meal) {
-      if (meal is Map<String, dynamic> && meal.containsKey('recipes') && meal['recipes'] is List) {
+      if (meal is Map<String, dynamic> &&
+          meal.containsKey('recipes') &&
+          meal['recipes'] is List) {
         final List<dynamic> originalRecipeIds = meal['recipes'];
-        final List<String> newRecipeIds = originalRecipeIds.map((id) {
-          if (id is int) {
-            return id.toString();
-          } else if (id is String) {
-            return id;
-          }
-          // For IDs that are neither int nor String (e.g. null, or other types)
-          // Decide on a strategy: filter them out, replace with a placeholder, or throw.
-          // Current: replace with empty string, then filter out empty.
-          // This might be too silent if an ID is unexpectedly null.
-          // Consider logging an error for null or unexpected types here.
-          if (id == null) {
-            print("RecipeList._convertMealListRecipeIdsToString: Found null recipe ID in meal: $meal");
-            return ''; // Will be filtered by where((id) => id.isNotEmpty)
-          } else {
-            print("RecipeList._convertMealListRecipeIdsToString: Found recipe ID of unexpected type ${id.runtimeType} ('$id') in meal: $meal");
-            return ''; // Will be filtered
-          }
-        }).where((id) => id.isNotEmpty).toList();
-        
+        final List<String> newRecipeIds = originalRecipeIds
+            .map((id) {
+              if (id is int) {
+                return id.toString();
+              } else if (id is String) {
+                return id;
+              }
+              // For IDs that are neither int nor String (e.g. null, or other types)
+              // Decide on a strategy: filter them out, replace with a placeholder, or throw.
+              // Current: replace with empty string, then filter out empty.
+              // This might be too silent if an ID is unexpectedly null.
+              // Consider logging an error for null or unexpected types here.
+              if (id == null) {
+                print(
+                    "RecipeList._convertMealListRecipeIdsToString: Found null recipe ID in meal: $meal");
+                return ''; // Will be filtered by where((id) => id.isNotEmpty)
+              } else {
+                print(
+                    "RecipeList._convertMealListRecipeIdsToString: Found recipe ID of unexpected type ${id.runtimeType} ('$id') in meal: $meal");
+                return ''; // Will be filtered
+              }
+            })
+            .where((id) => id.isNotEmpty)
+            .toList();
+
         // Create a new map to avoid modifying the original input map directly if it's from a stream
         final newMeal = Map<String, dynamic>.from(meal);
         newMeal['recipes'] = newRecipeIds;
@@ -80,21 +87,24 @@ class RecipeList extends ChangeNotifier {
       // If the recipe is from Spoonacular (or any external source needing nutrient fetch)
       // and nutrients are empty, fetch them.
       // User-added recipes will come with nutrients pre-filled by Recipe.fromUserRecipe.
-      if (recipe.nutrients.isEmpty && recipe.category != 'User Added') { 
-          recipeToAdd = await RecipeService().addNutrients(recipe);
+      if (recipe.nutrients.isEmpty && recipe.category != 'User Added') {
+        recipeToAdd = await RecipeService().addNutrients(recipe);
       }
-      
+
       // Ensure the ID is unique if it's a new recipe from a user source
       // For now, RecipeList expects recipe.id to be correctly set before this point.
       // The ListRecipesPage will handle creating a Recipe object from UserRecipe with a new ID.
 
       _recipesList.add(recipeToAdd);
-      ConnectDb().updateRecipes(_recipesList); // Save to user's private recipe cache
+      ConnectDb()
+          .updateRecipes(_recipesList); // Save to user's private recipe cache
       return recipeToAdd;
     }
     // If recipe exists, and it's an API recipe, and nutrients were missing, update them.
-    else if (_recipesList[recipeFound].nutrients.isEmpty && _recipesList[recipeFound].category != 'User Added') {
-      _recipesList[recipeFound] = await RecipeService().addNutrients(_recipesList[recipeFound]);
+    else if (_recipesList[recipeFound].nutrients.isEmpty &&
+        _recipesList[recipeFound].category != 'User Added') {
+      _recipesList[recipeFound] =
+          await RecipeService().addNutrients(_recipesList[recipeFound]);
       ConnectDb().updateRecipes(_recipesList);
       return _recipesList[recipeFound];
     }
@@ -112,25 +122,32 @@ class RecipeList extends ChangeNotifier {
 
     if (mealIndex >= 0 && mealIndex < _mealList.length) {
       // Ensure the specific meal object's recipe IDs are strings before assigning to _currentMealdata
-      final Map<String, dynamic> mealFromList = Map<String, dynamic>.from(_mealList[mealIndex]);
+      final Map<String, dynamic> mealFromList =
+          Map<String, dynamic>.from(_mealList[mealIndex]);
       // This mealFromList should ideally already have string IDs due to above methods.
       // The explicit processing here is a safeguard.
-      if (mealFromList.containsKey('recipes') && mealFromList['recipes'] is List) {
+      if (mealFromList.containsKey('recipes') &&
+          mealFromList['recipes'] is List) {
         final List<dynamic> originalRecipeIds = mealFromList['recipes'];
-        final List<String> newRecipeIds = originalRecipeIds.map((id) {
-          if (id is int) {
-            return id.toString();
-          } else if (id is String) {
-            return id;
-          }
-          if (id == null) {
-            print("RecipeList.setCurrentMeal: Found null recipe ID in meal being set as current: $mealFromList");
-            return ''; 
-          } else {
-            print("RecipeList.setCurrentMeal: Found recipe ID of unexpected type ${id.runtimeType} ('$id') in meal being set as current: $mealFromList");
-            return ''; 
-          }
-        }).where((id) => id.isNotEmpty).toList();
+        final List<String> newRecipeIds = originalRecipeIds
+            .map((id) {
+              if (id is int) {
+                return id.toString();
+              } else if (id is String) {
+                return id;
+              }
+              if (id == null) {
+                print(
+                    "RecipeList.setCurrentMeal: Found null recipe ID in meal being set as current: $mealFromList");
+                return '';
+              } else {
+                print(
+                    "RecipeList.setCurrentMeal: Found recipe ID of unexpected type ${id.runtimeType} ('$id') in meal being set as current: $mealFromList");
+                return '';
+              }
+            })
+            .where((id) => id.isNotEmpty)
+            .toList();
         mealFromList['recipes'] = newRecipeIds;
       }
       _currentMealdata.addAll(mealFromList);
@@ -180,7 +197,8 @@ class RecipeList extends ChangeNotifier {
   }
 
   void removeRecipe(Recipe recipe) {
-    final String recipeId = recipe.id; // Changed from int title to String recipeId
+    final String recipeId =
+        recipe.id; // Changed from int title to String recipeId
     _currentMealdata['recipes'].removeWhere(
       (element) => element == recipeId, // Compare with recipeId
     );
@@ -215,7 +233,8 @@ class RecipeList extends ChangeNotifier {
     notifyListeners();
   }
 
-  Recipe getRecipe(String id) { // Changed signature from int id to String id
+  Recipe getRecipe(String id) {
+    // Changed signature from int id to String id
     return _recipesList.firstWhere((recipe) => recipe.id == id);
   }
 
@@ -229,12 +248,15 @@ class RecipeList extends ChangeNotifier {
     _totalCarbs = 0.0;
     _totalProteins = 0.0;
     _totalFats = 0.0;
-    for (var meal in processedMealsDay) { // Iterate over processedMealsDay
+    for (var meal in processedMealsDay) {
+      // Iterate over processedMealsDay
       if (meal != null) {
         // meal['recipes'] should now be List<String>
-        for (var id_str in meal['recipes']) { // id is now string, renamed to id_str for clarity
-          if (id_str != null && id_str.isNotEmpty) { // Ensure id_str is not null or empty
-            final Recipe recipe = getRecipe(id_str); // Pass String id_str
+        for (var idStr in meal['recipes']) {
+          // id is now string, renamed to id_str for clarity
+          if (idStr != null && idStr.isNotEmpty) {
+            // Ensure id_str is not null or empty
+            final Recipe recipe = getRecipe(idStr); // Pass String id_str
             _totalCarbs += recipe.getNutrients('Carbohydrates');
             _totalProteins += recipe.getNutrients('Protein');
             _totalFats += recipe.getNutrients('Fat');
