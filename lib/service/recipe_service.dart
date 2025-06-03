@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:health_app_v1/models/recipe.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class RecipeService {
-  final String apiKey = '0eb442d0f65b47ca8d4c68e0252378d2';
+  final String apiKey =
+      dotenv.env['SPOONACULAR_API_KEY'] ?? 'API_KEY not found';
   final String baseUrl = 'https://api.spoonacular.com';
 
   Future<List<Recipe>> getRecipes(
