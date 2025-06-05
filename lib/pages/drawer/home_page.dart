@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
       final List<dynamic> mealList = context.read<RecipeList>().mealList;
       mealList.removeAt(oldIndex);
       mealList.insert(newIndex, mealData);
-      ConnectDb().updateMeal({currentDate: mealList});
+      ConnectDb().updateMeal(currentDate, mealList);
     });
   }
 
@@ -103,8 +103,8 @@ class _HomePageState extends State<HomePage> {
     final EdgeInsets marginContainer =
         EdgeInsets.symmetric(horizontal: 30, vertical: 15);
     List mealList = [];
-    List moodList = [];
-    final CurrentDate date = context.watch<CurrentDate>();
+    List moodCategoriesList = [];
+    final CurrentDate dateProvider = context.watch<CurrentDate>();
     final ConnectDb db = context.watch<ConnectDb>();
     final List<String> symbols = ["😢", "🥺", "😐", "😊", "😆"];
 
@@ -122,7 +122,7 @@ class _HomePageState extends State<HomePage> {
         ),
         drawer: const MyDrawer(),
         body: StreamBuilder<DocumentSnapshot>(
-          stream: db.streamMeals,
+          stream: db.streamCurrentDayMeals,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(
@@ -131,16 +131,19 @@ class _HomePageState extends State<HomePage> {
               ));
             }
 
-            Map<String, dynamic> userMeals =
-                snapshot.data!.data() as Map<String, dynamic>;
-
-            if (!userMeals.containsKey(date.sanitizedDate)) {
-              db.updateMeal({date.sanitizedDate: _defaultMeals});
-              userMeals.addEntries({date.sanitizedDate: _defaultMeals}.entries);
+            if (!snapshot.hasData ||
+                !snapshot.data!.exists ||
+                snapshot.data!.data() == null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                db.initializeMeals(dateProvider.sanitizedDate, db.uid);
+              });
+              mealList = _defaultMeals; // Use default until data arrives
+            } else {
+              final Map<String, dynamic> data =
+                  snapshot.data!.data()! as Map<String, dynamic>;
+              mealList = (data['meals'] as List);
             }
-            userMeals = convertRecipeIntsToStrings(userMeals);
 
-            mealList = userMeals[date.sanitizedDate];
             final Map<String, double> totalNutrients =
                 context.read<RecipeList>().sumNutrients(mealList);
 
@@ -160,6 +163,7 @@ class _HomePageState extends State<HomePage> {
                             .replaceAll("/", "-");
                         context.read<RecipeList>().setCurrentDate(newDate);
                         context.read<Mood>().setCurrentDate(newDate);
+                        db.updateUID(db.uid);
                       },
                       nextDay: () {
                         final newDate = context
@@ -168,6 +172,7 @@ class _HomePageState extends State<HomePage> {
                             .replaceAll("/", "-");
                         context.read<RecipeList>().setCurrentDate(newDate);
                         context.read<Mood>().setCurrentDate(newDate);
+                        db.updateUID(db.uid);
                       },
                     ),
                   ),
@@ -205,7 +210,7 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: ReorderableListView.builder(
                     padding: EdgeInsets.only(bottom: 50),
-                    itemCount: mealList.length + 1,
+                    itemCount: mealList.length + 1, // +1 for the mood tile
                     itemBuilder: (context, index) {
                       if (index < mealList.length) {
                         return MyMealTile(
@@ -233,11 +238,11 @@ class _HomePageState extends State<HomePage> {
                           },
                         );
                       } else {
-                        return StreamBuilder(
-                          key: ValueKey('Mood'),
-                          stream: db.streamMoods,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
+                        return StreamBuilder<DocumentSnapshot>(
+                          key: ValueKey('Mood-${dateProvider.sanitizedDate}'),
+                          stream: db.streamCurrentDayMoods,
+                          builder: (context, moodSnapshot) {
+                            if (moodSnapshot.connectionState ==
                                 ConnectionState.waiting) {
                               return Center(
                                   child: CircularProgressIndicator(
@@ -245,24 +250,33 @@ class _HomePageState extends State<HomePage> {
                               ));
                             }
 
-                            final userMood =
-                                snapshot.data!.data() as Map<String, dynamic>;
-
-                            if (!userMood.containsKey(date.sanitizedDate)) {
-                              db.updateMood(
-                                  {date.sanitizedDate: db.defaultMoods});
-                              userMood.addEntries({
-                                date.sanitizedDate: db.defaultMoods
-                              }.entries); // think this is unnecessary
+                            // Check if document exists and has data for today's mood
+                            if (!moodSnapshot.hasData ||
+                                !moodSnapshot.data!.exists ||
+                                moodSnapshot.data!.data() == null) {
+                              // If no data for today, initialize it
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                db.initializeMood(
+                                    dateProvider.sanitizedDate, db.uid);
+                              });
+                              moodCategoriesList = db
+                                  .defaultMoods; // Use defaults until data arrives
+                            } else {
+                              final Map<String, dynamic> data =
+                                  moodSnapshot.data!.data()!
+                                      as Map<String, dynamic>;
+                              moodCategoriesList = (data['moods']
+                                  as List); // Access 'moods' field
                             }
-
-                            moodList = userMood[date.sanitizedDate];
-                            final int totalScore =
-                                context.read<Mood>().updateTotalScore(moodList);
+                            final int totalScore = context
+                                .read<Mood>()
+                                .updateTotalScore(moodCategoriesList);
 
                             return GestureDetector(
                               onTap: () {
-                                context.read<Mood>().updateCategories(moodList);
+                                context
+                                    .read<Mood>()
+                                    .updateCategories(moodCategoriesList);
                                 Navigator.pushNamed(context, '/mood_page');
                               },
                               child: MyMoodTile(

@@ -96,7 +96,7 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
       currentMealData['recipes'].insert(newIndex, id);
       mealList.removeAt(mealIndex);
       mealList.insert(mealIndex, currentMealData);
-      ConnectDb().updateMeal({currentDate: mealList});
+      ConnectDb().updateMeal(currentDate, mealList);
     });
   }
 
@@ -181,12 +181,13 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
 
   Future<void> listYesterday(
       ConnectDb db, CurrentDate date, BuildContext context) async {
-    var userData = await db.meals.doc(db.uid).get();
-    final Map<String, dynamic> data =
-        (userData.data()! as Map<String, dynamic>);
     final String yesterdayDate = date.getDate(-1);
+    final userData = db.mealsCollection
+        .doc(db.uid)
+        .collection('daily_entries')
+        .doc(yesterdayDate) as Map<String, dynamic>;
 
-    if (!data.containsKey(yesterdayDate)) {
+    if (userData.isEmpty) {
       if (context.mounted) {
         showMySnackBar(context, 'No records for yesterday', 'Dismiss', () {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -195,7 +196,7 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
       return;
     }
 
-    final List yesterdayMeals = data[yesterdayDate];
+    final List yesterdayMeals = userData["meals"];
     final List yesterdayTitles = [];
     final List yesterdayRecipes = [];
 

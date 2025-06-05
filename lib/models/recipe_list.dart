@@ -76,6 +76,7 @@ class RecipeList extends ChangeNotifier {
     _recipesList.addAll(recipes);
     final processedMealsDay = _convertMealListRecipeIdsToString(mealsDay);
     _mealList.addAll(processedMealsDay);
+    print("Meallist: $_mealList");
     _initialized = true;
   }
 
@@ -166,7 +167,7 @@ class RecipeList extends ChangeNotifier {
     _currentMealdata['mealTitle'] = newName;
     _mealList.removeAt(_currentMeal);
     _mealList.insert(_currentMeal, _currentMealdata);
-    ConnectDb().updateMeal({_currentDate: _mealList});
+    ConnectDb().updateMeal(_currentDate, _mealList);
     notifyListeners();
   }
 
@@ -174,12 +175,13 @@ class RecipeList extends ChangeNotifier {
     _currentMealdata['recipes'].add(recipe.id);
     _mealList.removeAt(_currentMeal);
     _mealList.insert(_currentMeal, currentMealData);
+    print("Updated meallist: $_mealList");
     final Recipe updatedRecipe = await _updateRecipesList(recipe);
     _totalCarbs += updatedRecipe.getNutrients('Carbohydrates');
     _totalProteins += updatedRecipe.getNutrients('Protein');
     _totalFats += updatedRecipe.getNutrients('Fat');
     final ConnectDb db = ConnectDb();
-    db.updateMeal({_currentDate: _mealList});
+    db.updateMeal(_currentDate, _mealList);
     final isComplete = await NotificationsService.isMealDataComplete(db.uid);
 
     if (isComplete) {
@@ -204,7 +206,7 @@ class RecipeList extends ChangeNotifier {
     );
     _mealList.removeAt(_currentMeal);
     _mealList.insert(_currentMeal, currentMealData);
-    ConnectDb().updateMeal({_currentDate: _mealList});
+    ConnectDb().updateMeal(_currentDate, _mealList);
     _totalCarbs -= recipe.getNutrients('Carbohydrates');
     _totalProteins -= recipe.getNutrients('Protein');
     _totalFats -= recipe.getNutrients('Fat');
@@ -213,14 +215,14 @@ class RecipeList extends ChangeNotifier {
 
   void addMeal(String newName) {
     _mealList.add({'mealTitle': newName, 'recipes': []});
-    ConnectDb().updateMeal({_currentDate: _mealList});
+    ConnectDb().updateMeal(_currentDate, _mealList);
     notifyListeners();
   }
 
   void removeMeal(int index, String key, Map<String, dynamic> times) async {
     _mealList.removeAt(index);
     final ConnectDb db = ConnectDb();
-    db.updateMeal({_currentDate: _mealList});
+    db.updateMeal(_currentDate, _mealList);
     final isComplete = await NotificationsService.isMealDataComplete(db.uid);
 
     if (isComplete) {

@@ -23,6 +23,9 @@ class MainPage extends StatelessWidget {
 
     final String uid = user.uid;
     final String currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+    await db.migrateUserDataToSubcollections(uid);
+
     db.updateUID(uid);
 
     DocumentSnapshot<Map<String, dynamic>> snapshotRecipe =
@@ -36,20 +39,24 @@ class MainPage extends StatelessWidget {
 
     await db.loadRecipes();
 
-    DocumentSnapshot<Map<String, dynamic>> snapshotMeals =
-        await FirebaseFirestore.instance.collection('meals').doc(uid).get();
+    DocumentSnapshot<Map<String, dynamic>> snapshotCurrentDayMeals = await db
+        .mealsCollection
+        .doc(uid)
+        .collection('daily_entries')
+        .doc(currentDate)
+        .get();
 
-    if (!snapshotMeals.exists || snapshotMeals.data()?.isEmpty == true) {
-      await db.initializeMeals(currentDate, uid);
-      snapshotMeals =
-          await FirebaseFirestore.instance.collection('meals').doc(uid).get();
+    if (!snapshotCurrentDayMeals.exists ||
+        snapshotCurrentDayMeals.data()?.isEmpty == true) {
+      await db.initializeMeals(currentDate, uid); // Create today's entry
+      snapshotCurrentDayMeals = await db.mealsCollection
+          .doc(uid)
+          .collection('daily_entries')
+          .doc(currentDate)
+          .get();
     }
-
-    if (!snapshotMeals.data()!.containsKey(currentDate)) {
-      await db.updateMeal({currentDate: db.defaultMeals});
-      snapshotMeals =
-          await FirebaseFirestore.instance.collection('meals').doc(uid).get();
-    }
+    final List mealsDay = (snapshotCurrentDayMeals.data()!['meals']
+        as List); // Access 'meals' field
 
     DocumentSnapshot<Map<String, dynamic>> snapshotSettings =
         await FirebaseFirestore.instance.collection('settings').doc(uid).get();
@@ -72,26 +79,28 @@ class MainPage extends StatelessWidget {
 
     await db.loadSettings();
 
-    DocumentSnapshot<Map<String, dynamic>> snapshotMood =
-        await FirebaseFirestore.instance.collection('mood').doc(uid).get();
+    DocumentSnapshot<Map<String, dynamic>> snapshotCurrentDayMood = await db
+        .moodCollection
+        .doc(uid)
+        .collection('daily_entries')
+        .doc(currentDate)
+        .get();
 
-    if (!snapshotMood.exists || snapshotMood.data()?.isEmpty == true) {
-      await db.initializeMood(currentDate, uid);
-      snapshotMood =
-          await FirebaseFirestore.instance.collection('mood').doc(uid).get();
+    if (!snapshotCurrentDayMood.exists ||
+        snapshotCurrentDayMood.data()?.isEmpty == true) {
+      await db.initializeMood(currentDate, uid); // Create today's entry
+      snapshotCurrentDayMood = await db.moodCollection
+          .doc(uid)
+          .collection('daily_entries')
+          .doc(currentDate)
+          .get();
     }
+    final List moodsDay = (snapshotCurrentDayMood.data()!['moods']
+        as List); // Access 'moods' field
+    await db.loadMoods(currentDate); // Load into ConnectDb's _moodList
 
-    if (!snapshotMood.data()!.containsKey(currentDate)) {
-      await db.updateMood({currentDate: db.defaultMoods});
-      snapshotMood =
-          await FirebaseFirestore.instance.collection('mood').doc(uid).get();
-    }
-
-    await db.loadMoods();
-
-    final List mealsDay = snapshotMeals[currentDate];
     rl.initializeRecipes(db.recipesList, mealsDay);
-    m.initializeMood(db.moodList, currentDate);
+    m.initializeMood(moodsDay, currentDate);
     settings.initializeSettings(db.timeMap, db.goalsMap);
   }
 

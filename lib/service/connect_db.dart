@@ -2,32 +2,33 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:health_app_v1/models/recipe.dart';
-import 'package:health_app_v1/models/user_recipe.dart'; // Ensure UserRecipe is imported
+import 'package:health_app_v1/models/user_recipe.dart';
+import 'package:intl/intl.dart'; // Ensure UserRecipe is imported
 
 class ConnectDb extends ChangeNotifier {
   String _uid = FirebaseAuth.instance.currentUser!.uid;
 
-  final CollectionReference _meals =
+  final CollectionReference _mealsCollection =
       FirebaseFirestore.instance.collection('meals');
+  final CollectionReference _moodCollection =
+      FirebaseFirestore.instance.collection('mood');
   final CollectionReference _recipes =
       FirebaseFirestore.instance.collection('recipes');
-  final CollectionReference _mood =
-      FirebaseFirestore.instance.collection('mood');
   final CollectionReference _settings =
       FirebaseFirestore.instance.collection('settings');
   final CollectionReference _sharedRecipes =
       FirebaseFirestore.instance.collection('shared_recipes');
 
-  Stream<DocumentSnapshot<Map<String, dynamic>>> _streamMeals =
-      FirebaseFirestore.instance
-          .collection('meals')
-          .doc(FirebaseAuth.instance.currentUser!.uid)
-          .snapshots();
-  final Stream<DocumentSnapshot<Map<String, dynamic>>> _streamMoods =
-      FirebaseFirestore.instance
-          .collection('mood')
-          .doc(FirebaseAuth.instance.currentUser!.uid)
-          .snapshots();
+  // Stream<DocumentSnapshot<Map<String, dynamic>>> _streamMeals =
+  //     FirebaseFirestore.instance
+  //         .collection('meals')
+  //         .doc(FirebaseAuth.instance.currentUser!.uid)
+  //         .snapshots();
+  // final Stream<DocumentSnapshot<Map<String, dynamic>>> _streamMoods =
+  //     FirebaseFirestore.instance
+  //         .collection('mood')
+  //         .doc(FirebaseAuth.instance.currentUser!.uid)
+  //         .snapshots();
 
   final List _initializeMeals = [
     {
@@ -114,39 +115,157 @@ class ConnectDb extends ChangeNotifier {
     },
   ];
 
+  late Stream<DocumentSnapshot<Map<String, dynamic>>> _streamCurrentDayMeals;
+  late Stream<DocumentSnapshot<Map<String, dynamic>>> _streamCurrentDayMoods;
+
   Map<String, dynamic> _timesMap = {};
   List<Recipe> _recipesList = [];
-  Map<String, dynamic> _moodList = {};
+  List _moodList = [];
   Map<String, dynamic> _goalsMap = {};
 
   String get uid => _uid;
-  CollectionReference get meals => _meals;
+  CollectionReference get mealsCollection => _mealsCollection;
   CollectionReference get recipes => _recipes;
-  CollectionReference get mood => _mood;
+  CollectionReference get moodCollection => _moodCollection;
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> get streamCurrentDayMeals =>
+      _streamCurrentDayMeals;
+  Stream<DocumentSnapshot<Map<String, dynamic>>> get streamCurrentDayMoods =>
+      _streamCurrentDayMoods;
+
   List get defaultMeals =>
-      (_recipesList.indexWhere((recipe) => recipe.id == "0") > -1) // Changed recipe.id == 0 to recipe.id == "0"
+      (_recipesList.indexWhere((recipe) => recipe.id == "0") >
+              -1) // Changed recipe.id == 0 to recipe.id == "0"
           ? _defaultMeals
           : _initializeMeals;
   List get defaultMoods => _defaultMoods;
   Map<String, dynamic> get timeMap => _timesMap;
   Map<String, dynamic> get goalsMap => _goalsMap;
   List<Recipe> get recipesList => _recipesList;
-  Map<String, dynamic> get moodList => _moodList;
-  Stream<DocumentSnapshot<Map<String, dynamic>>> get streamMeals =>
-      _streamMeals;
-  Stream<DocumentSnapshot<Map<String, dynamic>>> get streamMoods =>
-      _streamMoods;
+  List get moodList => _moodList;
 
   void updateUID(String uid) {
     _uid = uid;
-    _streamMeals =
-        FirebaseFirestore.instance.collection('meals').doc(uid).snapshots();
+    final String currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    _streamCurrentDayMeals = _mealsCollection
+        .doc(uid)
+        .collection('daily-entries')
+        .doc(currentDate)
+        .snapshots();
+    _streamCurrentDayMoods = _moodCollection
+        .doc(uid)
+        .collection('daily_entries')
+        .doc(currentDate)
+        .snapshots();
+    notifyListeners();
+  }
+
+  // -------------- Data Migration -----------------
+  // should only be called for the first time then should be good to go
+
+  Future<void> migrateUserDataToSubcollections(String uid) async {
+    print('Starting data migration for user: $uid');
+
+    // Meals Data
+    DocumentSnapshot<Map<String, dynamic>> oldMealsDoc = await _mealsCollection
+        .doc(uid)
+        .get() as DocumentSnapshot<Map<String, dynamic>>;
+    if (oldMealsDoc.exists &&
+        oldMealsDoc.data() != null &&
+        oldMealsDoc.data()!.isNotEmpty) {
+      bool looksLikeOldMeals =
+          oldMealsDoc.data()!.keys.any((key) => key.contains('-'));
+      if (looksLikeOldMeals) {
+        final Map<String, dynamic> allOldMeals = oldMealsDoc.data()!;
+        final WriteBatch batch = FirebaseFirestore.instance.batch();
+        int migratedMealsCount = 0;
+
+        for (var entry in allOldMeals.entries) {
+          final String date = entry.key;
+          final List mealsForDay = entry.value as List;
+
+          final updatedMealsForDay = [];
+          for (var meal in mealsForDay) {
+            final mealIds = meal["recipes"] as List;
+            for (var recipeId in mealIds) {
+              updatedMealsForDay.add(recipeId.toString());
+            }
+            meal["recipes"] = updatedMealsForDay;
+          }
+
+          final DocumentReference newDailyMealsDocRef =
+              _mealsCollection.doc(uid).collection('daily_entries').doc(date);
+          batch.set(newDailyMealsDocRef, {'date': date, 'meals': mealsForDay});
+          migratedMealsCount++;
+        }
+        await batch.commit();
+        print('Migrated $migratedMealsCount meal entries for user $uid');
+      } else {
+        print(
+            'Meals document for user $uid does not appear to be in old format or already migrated.');
+      }
+    } else {
+      print('No old meals document found for user $uid or it is empty.');
+    }
+
+    DocumentSnapshot<Map<String, dynamic>> oldMoodDoc = await _moodCollection
+        .doc(uid)
+        .get() as DocumentSnapshot<Map<String, dynamic>>;
+    if (oldMoodDoc.exists &&
+        oldMoodDoc.data() != null &&
+        oldMoodDoc.data()!.isNotEmpty) {
+      bool looksLikeOldMoods =
+          oldMoodDoc.data()!.keys.any((key) => key.contains('-'));
+      if (looksLikeOldMoods) {
+        final Map<String, dynamic> allOldMoods = oldMoodDoc.data()!;
+        final WriteBatch batch = FirebaseFirestore.instance.batch();
+        int migratedMoodCount = 0;
+
+        for (var entry in allOldMoods.entries) {
+          final String date = entry.key;
+          final List moodsForDay = entry.value as List;
+
+          final DocumentReference newDailyMoodsDocRef =
+              _moodCollection.doc(uid).collection('daily_entries').doc(date);
+          batch.set(newDailyMoodsDocRef, {
+            'date': date,
+            'moods': moodsForDay,
+          });
+          migratedMoodCount++;
+        }
+        await batch.commit();
+        print('Migrated $migratedMoodCount mood entries for user $uid');
+      } else {
+        print(
+            'Mood document for user $uid does not appear to be in old format or already migrated.');
+      }
+    } else {
+      print(
+          'No old mood document found for found for user $uid or it is empty.');
+    }
+    print('Data migration process completed for user: $uid');
   }
 
   Future<void> initializeMeals(String currentDate, String newUid) async {
-    final DocumentReference userMeals = _meals.doc(newUid);
+    final DocumentReference userDailyMealsDoc = _mealsCollection
+        .doc(newUid)
+        .collection('daily_entries')
+        .doc(currentDate);
+    await userDailyMealsDoc.set({
+      'date': currentDate,
+      'meals': _initializeMeals,
+    });
+  }
 
-    await userMeals.set({currentDate: _initializeMeals});
+  Future<void> initializeMood(String currentDate, String newUid) async {
+    final DocumentReference userDailyMoodDoc = _moodCollection
+        .doc(newUid)
+        .collection('daily_entries')
+        .doc(currentDate);
+    await userDailyMoodDoc.set({
+      'date': currentDate,
+      'moods': _defaultMoods,
+    });
   }
 
   Future<void> initializeSettings(String newUid) async {
@@ -165,10 +284,56 @@ class ConnectDb extends ChangeNotifier {
     await userRecipes.set(_defaultRecipes);
   }
 
-  Future<void> initializeMood(String currentDate, String newUid) async {
-    final DocumentReference userMood = _mood.doc(newUid);
+  Future<void> updateMeal(String date, List mealData) async {
+    final DocumentReference dailyMealDoc =
+        _mealsCollection.doc(_uid).collection('daily_entries').doc(date);
+    await dailyMealDoc.update({'meals': mealData});
+  }
 
-    await userMood.set({currentDate: _defaultMoods});
+  Future<void> updateMood(String date, List moodData) async {
+    final DocumentReference dailyMoodDoc =
+        _moodCollection.doc(_uid).collection('daily_entries').doc(date);
+    await dailyMoodDoc.update({'moods': moodData});
+  }
+
+  Future<List<Map<String, dynamic>>> getMealsForDateRange(
+      String uid, DateTime startDate, DateTime endDate) async {
+    final String startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
+    final String endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
+
+    final QuerySnapshot querySnapshot = await _mealsCollection
+        .doc(uid)
+        .collection('daily_entries')
+        .where('date', isGreaterThanOrEqualTo: startDateStr)
+        .where('date', isLessThanOrEqualTo: endDateStr)
+        .orderBy('date') // Ensure data is returned in chronological order
+        .get();
+
+    List<Map<String, dynamic>> dailyData = [];
+    for (var doc in querySnapshot.docs) {
+      dailyData.add(doc.data() as Map<String, dynamic>);
+    }
+    return dailyData;
+  }
+
+  Future<List<Map<String, dynamic>>> getMoodsForDateRange(
+      String uid, DateTime startDate, DateTime endDate) async {
+    final String startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
+    final String endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
+
+    final QuerySnapshot querySnapshot = await _moodCollection
+        .doc(uid)
+        .collection('daily_entries')
+        .where('date', isGreaterThanOrEqualTo: startDateStr)
+        .where('date', isLessThanOrEqualTo: endDateStr)
+        .orderBy('date')
+        .get();
+
+    List<Map<String, dynamic>> dailyData = [];
+    for (var doc in querySnapshot.docs) {
+      dailyData.add(doc.data() as Map<String, dynamic>);
+    }
+    return dailyData;
   }
 
   Future<void> loadSettings() async {
@@ -201,13 +366,20 @@ class ConnectDb extends ChangeNotifier {
     }
   }
 
-  Future<void> loadMoods() async {
-    var userMoods = await _mood.doc(_uid).get();
-    Map<String, dynamic> moodCategories = {};
-    if (userMoods.exists) {
-      moodCategories = (userMoods.data()! as Map<String, dynamic>);
-      _moodList = moodCategories;
+  Future<void> loadMoods(String currentDate) async {
+    var userMoodDoc = await _moodCollection
+        .doc(_uid)
+        .collection('daily_entries')
+        .doc(currentDate)
+        .get();
+    if (userMoodDoc.exists && userMoodDoc.data() != null) {
+      _moodList = (userMoodDoc.data()!)['moods'] as List;
+    } else {
+      // If no entry for today, initialize it (important for new days)
+      await initializeMood(currentDate, _uid);
+      _moodList = _defaultMoods;
     }
+    notifyListeners();
   }
 
   Future<void> updateSettings(Map<String, dynamic> updatedTimes,
@@ -220,11 +392,6 @@ class ConnectDb extends ChangeNotifier {
     await userSettings.update({'settings': settings});
   }
 
-  Future<void> updateMeal(Map<String, List> updatedList) async {
-    DocumentReference docRefMeals = _meals.doc(_uid);
-    await docRefMeals.update(updatedList);
-  }
-
   Future<void> updateRecipes(List<Recipe> updatedList) async {
     final List<dynamic> uploadList = [];
     for (var recipe in updatedList) {
@@ -234,15 +401,10 @@ class ConnectDb extends ChangeNotifier {
     await docRefRecipes.update({'recipes': uploadList});
   }
 
-  Future<void> updateMood(Map<String, List> updatedList) async {
-    DocumentReference docRefMood = _mood.doc(_uid);
-    await docRefMood.update(updatedList);
-  }
-
   void signOut() {
     _uid = '';
     _recipesList = [];
-    _moodList = {};
+    _moodList = [];
     _timesMap = {};
     _goalsMap = {};
     notifyListeners();
@@ -261,9 +423,9 @@ class ConnectDb extends ChangeNotifier {
   Future<List<UserRecipe>> getSharedRecipes() async {
     try {
       final QuerySnapshot<Map<String, dynamic>> querySnapshot =
-          await _sharedRecipes.orderBy('createdAt', descending: true).get() 
-          as QuerySnapshot<Map<String, dynamic>>; // Cast here
-      
+          await _sharedRecipes.orderBy('createdAt', descending: true).get()
+              as QuerySnapshot<Map<String, dynamic>>; // Cast here
+
       return querySnapshot.docs
           .map((doc) => UserRecipe.fromSnapshot(doc))
           .toList();
