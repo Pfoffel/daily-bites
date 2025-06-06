@@ -158,7 +158,9 @@ class _HomePageState extends State<HomePage> {
 
             // --- CRUCIAL CHANGE: Update RecipeList provider with the latest data ---
             // This ensures RecipeList's internal _mealList always matches Firebase.
-            recipeListProvider.setCurrentDayMeal(mealList);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              recipeListProvider.setCurrentDayMeal(mealList);
+            });
 
             final Map<String, double> totalNutrients =
                 context.read<RecipeList>().sumNutrients(mealList);
@@ -179,7 +181,7 @@ class _HomePageState extends State<HomePage> {
                             .replaceAll("/", "-");
                         context.read<RecipeList>().setCurrentDate(newDate);
                         context.read<Mood>().setCurrentDate(newDate);
-                        db.updateUID(db.uid);
+                        db.updateUID(db.uid, newDate);
                       },
                       nextDay: () {
                         final newDate = context
@@ -188,7 +190,7 @@ class _HomePageState extends State<HomePage> {
                             .replaceAll("/", "-");
                         context.read<RecipeList>().setCurrentDate(newDate);
                         context.read<Mood>().setCurrentDate(newDate);
-                        db.updateUID(db.uid);
+                        db.updateUID(db.uid, newDate);
                       },
                     ),
                   ),
@@ -226,34 +228,30 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: ReorderableListView.builder(
                     padding: EdgeInsets.only(bottom: 50),
-                    itemCount: recipeListProvider.mealList.length +
-                        1, // +1 for the mood tile
+                    itemCount: mealList.length + 1, // +1 for the mood tile
                     itemBuilder: (context, index) {
-                      if (index < recipeListProvider.mealList.length) {
+                      if (index < mealList.length) {
                         return MyMealTile(
-                          key: ValueKey(
-                              recipeListProvider.mealList[index]['mealTitle']),
+                          key: ValueKey(mealList[index]['mealTitle']),
                           height: 180,
                           margin: marginContainer,
-                          mealTitle: recipeListProvider.mealList[index]
-                              ['mealTitle'],
-                          recipeList: recipeListProvider.mealList[index]
-                              ['recipes'],
+                          mealTitle: mealList[index]['mealTitle'],
+                          recipeList: mealList[index]['recipes'],
                           currentMeal: index,
                           onTab: () {
                             context
                                 .read<RecipeList>()
-                                .setCurrentDayMeal(recipeListProvider.mealList);
+                                .setCurrentDayMeal(mealList);
                             context.read<RecipeList>().setCurrentMeal(index);
                             Navigator.pushNamed(context, '/list_recipe_page');
                           },
                           onPressed: () {
                             context
                                 .read<RecipeList>()
-                                .setCurrentDayMeal(recipeListProvider.mealList);
+                                .setCurrentDayMeal(mealList);
                             context.read<RecipeList>().removeMeal(
                                 index,
-                                recipeListProvider.mealList[index]['mealTitle'],
+                                mealList[index]['mealTitle'],
                                 context.read<UserSettings>().schedule);
                           },
                         );
@@ -322,8 +320,8 @@ class _HomePageState extends State<HomePage> {
                         child: child,
                       );
                     },
-                    onReorder: (oldIndex, newIndex) => updateOrder(oldIndex,
-                        newIndex, recipeListProvider.mealList[oldIndex]),
+                    onReorder: (oldIndex, newIndex) =>
+                        updateOrder(oldIndex, newIndex, mealList[oldIndex]),
                   ),
                 ),
               ],
@@ -343,21 +341,27 @@ class _HomePageState extends State<HomePage> {
                 labelStyle: Theme.of(context).textTheme.labelMedium,
                 labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
                 onTap: () => recipeListProvider.addMeal('Snack')),
-            if (!recipeListProvider.mealList
+            if (!context
+                .watch<RecipeList>()
+                .mealList
                 .any((map) => map['mealTitle'] == 'Breakfast'))
               SpeedDialChild(
                   label: 'Breakfast',
                   labelStyle: Theme.of(context).textTheme.labelMedium,
                   labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
                   onTap: () => recipeListProvider.addMeal('Breakfast')),
-            if (!recipeListProvider.mealList
+            if (!context
+                .watch<RecipeList>()
+                .mealList
                 .any((map) => map['mealTitle'] == 'Lunch'))
               SpeedDialChild(
                   label: 'Lunch',
                   labelStyle: Theme.of(context).textTheme.labelMedium,
                   labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
                   onTap: () => recipeListProvider.addMeal('Lunch')),
-            if (!recipeListProvider.mealList
+            if (!context
+                .watch<RecipeList>()
+                .mealList
                 .any((map) => map['mealTitle'] == 'Dinner'))
               SpeedDialChild(
                   label: 'Dinner',

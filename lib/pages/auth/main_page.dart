@@ -25,8 +25,7 @@ class MainPage extends StatelessWidget {
     final String currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     await db.migrateUserDataToSubcollections(uid);
-
-    db.updateUID(uid);
+    db.updateUID(uid, currentDate);
 
     DocumentSnapshot<Map<String, dynamic>> snapshotRecipe =
         await FirebaseFirestore.instance.collection('recipes').doc(uid).get();

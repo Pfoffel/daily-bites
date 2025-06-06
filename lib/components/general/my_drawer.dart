@@ -93,6 +93,8 @@ class MyDrawer extends StatelessWidget {
                         style: Theme.of(context).textTheme.labelMedium,
                       ),
                       onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, "/main_page");
                         Provider.of<ConnectDb>(context, listen: false)
                             .signOut();
                         Provider.of<RecipeList>(context, listen: false)
@@ -101,7 +103,6 @@ class MyDrawer extends StatelessWidget {
                             .signOut();
                         Provider.of<Mood>(context, listen: false).signOut();
                         FirebaseAuth.instance.signOut();
-                        Navigator.pushNamed(context, "/main_page");
                       },
                     ),
                   ),

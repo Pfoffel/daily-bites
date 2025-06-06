@@ -123,8 +123,7 @@ class RecipeList extends ChangeNotifier {
 
     if (mealIndex >= 0 && mealIndex < _mealList.length) {
       // Ensure the specific meal object's recipe IDs are strings before assigning to _currentMealdata
-      final Map<String, dynamic> mealFromList =
-          Map<String, dynamic>.from(_mealList[mealIndex]);
+      final Map<String, dynamic> mealFromList = _mealList[mealIndex];
       // This mealFromList should ideally already have string IDs due to above methods.
       // The explicit processing here is a safeguard.
       if (mealFromList.containsKey('recipes') &&

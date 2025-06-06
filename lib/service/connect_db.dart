@@ -144,12 +144,11 @@ class ConnectDb extends ChangeNotifier {
   List<Recipe> get recipesList => _recipesList;
   List get moodList => _moodList;
 
-  void updateUID(String uid) {
+  void updateUID(String uid, String currentDate) {
     _uid = uid;
-    final String currentDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
     _streamCurrentDayMeals = _mealsCollection
         .doc(uid)
-        .collection('daily-entries')
+        .collection('daily_entries')
         .doc(currentDate)
         .snapshots();
     _streamCurrentDayMoods = _moodCollection
@@ -164,86 +163,91 @@ class ConnectDb extends ChangeNotifier {
   // should only be called for the first time then should be good to go
 
   Future<void> migrateUserDataToSubcollections(String uid) async {
-    print('Starting data migration for user: $uid');
+    if (uid == 'RBTA9BpEFbUTKnvn2Al850w3KMT2') {
+      print("Already migrated");
+    } else {
+      print('Starting data migration for user: $uid');
 
-    // Meals Data
-    DocumentSnapshot<Map<String, dynamic>> oldMealsDoc = await _mealsCollection
-        .doc(uid)
-        .get() as DocumentSnapshot<Map<String, dynamic>>;
-    if (oldMealsDoc.exists &&
-        oldMealsDoc.data() != null &&
-        oldMealsDoc.data()!.isNotEmpty) {
-      bool looksLikeOldMeals =
-          oldMealsDoc.data()!.keys.any((key) => key.contains('-'));
-      if (looksLikeOldMeals) {
-        final Map<String, dynamic> allOldMeals = oldMealsDoc.data()!;
-        final WriteBatch batch = FirebaseFirestore.instance.batch();
-        int migratedMealsCount = 0;
+      // Meals Data
+      DocumentSnapshot<Map<String, dynamic>> oldMealsDoc =
+          await _mealsCollection.doc(uid).get()
+              as DocumentSnapshot<Map<String, dynamic>>;
+      if (oldMealsDoc.exists &&
+          oldMealsDoc.data() != null &&
+          oldMealsDoc.data()!.isNotEmpty) {
+        bool looksLikeOldMeals =
+            oldMealsDoc.data()!.keys.any((key) => key.contains('-'));
+        if (looksLikeOldMeals) {
+          final Map<String, dynamic> allOldMeals = oldMealsDoc.data()!;
+          final WriteBatch batch = FirebaseFirestore.instance.batch();
+          int migratedMealsCount = 0;
 
-        for (var entry in allOldMeals.entries) {
-          final String date = entry.key;
-          final List mealsForDay = entry.value as List;
+          for (var entry in allOldMeals.entries) {
+            final String date = entry.key;
+            final List mealsForDay = entry.value as List;
 
-          final updatedMealsForDay = [];
-          for (var meal in mealsForDay) {
-            final mealIds = meal["recipes"] as List;
-            for (var recipeId in mealIds) {
-              updatedMealsForDay.add(recipeId.toString());
+            for (var meal in mealsForDay) {
+              final mealIds = meal["recipes"] as List;
+              final updatedMealsForDay = [];
+              for (var recipeId in mealIds) {
+                updatedMealsForDay.add(recipeId.toString());
+              }
+              meal["recipes"] = updatedMealsForDay;
             }
-            meal["recipes"] = updatedMealsForDay;
+
+            final DocumentReference newDailyMealsDocRef =
+                _mealsCollection.doc(uid).collection('daily_entries').doc(date);
+            batch
+                .set(newDailyMealsDocRef, {'date': date, 'meals': mealsForDay});
+            migratedMealsCount++;
           }
-
-          final DocumentReference newDailyMealsDocRef =
-              _mealsCollection.doc(uid).collection('daily_entries').doc(date);
-          batch.set(newDailyMealsDocRef, {'date': date, 'meals': mealsForDay});
-          migratedMealsCount++;
+          await batch.commit();
+          print('Migrated $migratedMealsCount meal entries for user $uid');
+        } else {
+          print(
+              'Meals document for user $uid does not appear to be in old format or already migrated.');
         }
-        await batch.commit();
-        print('Migrated $migratedMealsCount meal entries for user $uid');
+      } else {
+        print('No old meals document found for user $uid or it is empty.');
+      }
+
+      DocumentSnapshot<Map<String, dynamic>> oldMoodDoc = await _moodCollection
+          .doc(uid)
+          .get() as DocumentSnapshot<Map<String, dynamic>>;
+      if (oldMoodDoc.exists &&
+          oldMoodDoc.data() != null &&
+          oldMoodDoc.data()!.isNotEmpty) {
+        bool looksLikeOldMoods =
+            oldMoodDoc.data()!.keys.any((key) => key.contains('-'));
+        if (looksLikeOldMoods) {
+          final Map<String, dynamic> allOldMoods = oldMoodDoc.data()!;
+          final WriteBatch batch = FirebaseFirestore.instance.batch();
+          int migratedMoodCount = 0;
+
+          for (var entry in allOldMoods.entries) {
+            final String date = entry.key;
+            final List moodsForDay = entry.value as List;
+
+            final DocumentReference newDailyMoodsDocRef =
+                _moodCollection.doc(uid).collection('daily_entries').doc(date);
+            batch.set(newDailyMoodsDocRef, {
+              'date': date,
+              'moods': moodsForDay,
+            });
+            migratedMoodCount++;
+          }
+          await batch.commit();
+          print('Migrated $migratedMoodCount mood entries for user $uid');
+        } else {
+          print(
+              'Mood document for user $uid does not appear to be in old format or already migrated.');
+        }
       } else {
         print(
-            'Meals document for user $uid does not appear to be in old format or already migrated.');
+            'No old mood document found for found for user $uid or it is empty.');
       }
-    } else {
-      print('No old meals document found for user $uid or it is empty.');
+      print('Data migration process completed for user: $uid');
     }
-
-    DocumentSnapshot<Map<String, dynamic>> oldMoodDoc = await _moodCollection
-        .doc(uid)
-        .get() as DocumentSnapshot<Map<String, dynamic>>;
-    if (oldMoodDoc.exists &&
-        oldMoodDoc.data() != null &&
-        oldMoodDoc.data()!.isNotEmpty) {
-      bool looksLikeOldMoods =
-          oldMoodDoc.data()!.keys.any((key) => key.contains('-'));
-      if (looksLikeOldMoods) {
-        final Map<String, dynamic> allOldMoods = oldMoodDoc.data()!;
-        final WriteBatch batch = FirebaseFirestore.instance.batch();
-        int migratedMoodCount = 0;
-
-        for (var entry in allOldMoods.entries) {
-          final String date = entry.key;
-          final List moodsForDay = entry.value as List;
-
-          final DocumentReference newDailyMoodsDocRef =
-              _moodCollection.doc(uid).collection('daily_entries').doc(date);
-          batch.set(newDailyMoodsDocRef, {
-            'date': date,
-            'moods': moodsForDay,
-          });
-          migratedMoodCount++;
-        }
-        await batch.commit();
-        print('Migrated $migratedMoodCount mood entries for user $uid');
-      } else {
-        print(
-            'Mood document for user $uid does not appear to be in old format or already migrated.');
-      }
-    } else {
-      print(
-          'No old mood document found for found for user $uid or it is empty.');
-    }
-    print('Data migration process completed for user: $uid');
   }
 
   Future<void> initializeMeals(String currentDate, String newUid) async {
