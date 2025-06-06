@@ -106,6 +106,8 @@ class _HomePageState extends State<HomePage> {
     List moodCategoriesList = [];
     final CurrentDate dateProvider = context.watch<CurrentDate>();
     final ConnectDb db = context.watch<ConnectDb>();
+    final RecipeList recipeListProvider =
+        context.read<RecipeList>(); // Get provider instance
     final List<String> symbols = ["😢", "🥺", "😐", "😊", "😆"];
 
     return Scaffold(
@@ -131,18 +133,32 @@ class _HomePageState extends State<HomePage> {
               ));
             }
 
-            if (!snapshot.hasData ||
-                !snapshot.data!.exists ||
-                snapshot.data!.data() == null) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                db.initializeMeals(dateProvider.sanitizedDate, db.uid);
-              });
-              mealList = _defaultMeals; // Use default until data arrives
-            } else {
-              final Map<String, dynamic> data =
-                  snapshot.data!.data()! as Map<String, dynamic>;
-              mealList = (data['meals'] as List);
+            if (snapshot.hasError) {
+              print("Error fetching meals: ${snapshot.error}");
+              return Center(child: Text("Error loading meals."));
             }
+
+            final Map<String, dynamic>? data =
+                snapshot.data?.data() as Map<String, dynamic>?;
+
+            // Check if data is null, or if the 'meals' field is missing/not a list.
+            // If so, use default meals for display. The primary initialization is done in main_page.dart.
+            if (data == null ||
+                !data.containsKey('meals') ||
+                (data['meals'] is! List)) {
+              print(
+                  "DEBUG: Meals data not found or invalid for ${dateProvider.sanitizedDate}. Using default meals list for display.");
+              mealList =
+                  _defaultMeals; // Display default meals until valid data arrives
+            } else {
+              mealList =
+                  data['meals'] as List; // Use the actual data from Firebase
+            }
+            // --- END MODIFICATION FOR MEALS STREAM ---
+
+            // --- CRUCIAL CHANGE: Update RecipeList provider with the latest data ---
+            // This ensures RecipeList's internal _mealList always matches Firebase.
+            recipeListProvider.setCurrentDayMeal(mealList);
 
             final Map<String, double> totalNutrients =
                 context.read<RecipeList>().sumNutrients(mealList);
@@ -210,30 +226,34 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: ReorderableListView.builder(
                     padding: EdgeInsets.only(bottom: 50),
-                    itemCount: mealList.length + 1, // +1 for the mood tile
+                    itemCount: recipeListProvider.mealList.length +
+                        1, // +1 for the mood tile
                     itemBuilder: (context, index) {
-                      if (index < mealList.length) {
+                      if (index < recipeListProvider.mealList.length) {
                         return MyMealTile(
-                          key: ValueKey(mealList[index]['mealTitle']),
+                          key: ValueKey(
+                              recipeListProvider.mealList[index]['mealTitle']),
                           height: 180,
                           margin: marginContainer,
-                          mealTitle: mealList[index]['mealTitle'],
-                          recipeList: mealList[index]['recipes'],
+                          mealTitle: recipeListProvider.mealList[index]
+                              ['mealTitle'],
+                          recipeList: recipeListProvider.mealList[index]
+                              ['recipes'],
                           currentMeal: index,
                           onTab: () {
                             context
                                 .read<RecipeList>()
-                                .setCurrentDayMeal(mealList);
+                                .setCurrentDayMeal(recipeListProvider.mealList);
                             context.read<RecipeList>().setCurrentMeal(index);
                             Navigator.pushNamed(context, '/list_recipe_page');
                           },
                           onPressed: () {
                             context
                                 .read<RecipeList>()
-                                .setCurrentDayMeal(mealList);
+                                .setCurrentDayMeal(recipeListProvider.mealList);
                             context.read<RecipeList>().removeMeal(
                                 index,
-                                mealList[index]['mealTitle'],
+                                recipeListProvider.mealList[index]['mealTitle'],
                                 context.read<UserSettings>().schedule);
                           },
                         );
@@ -302,8 +322,8 @@ class _HomePageState extends State<HomePage> {
                         child: child,
                       );
                     },
-                    onReorder: (oldIndex, newIndex) =>
-                        updateOrder(oldIndex, newIndex, mealList[oldIndex]),
+                    onReorder: (oldIndex, newIndex) => updateOrder(oldIndex,
+                        newIndex, recipeListProvider.mealList[oldIndex]),
                   ),
                 ),
               ],
@@ -322,34 +342,28 @@ class _HomePageState extends State<HomePage> {
                 label: 'Snack',
                 labelStyle: Theme.of(context).textTheme.labelMedium,
                 labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
-                onTap: () => context.read<RecipeList>().addMeal('Snack')),
-            if (context.watch<RecipeList>().mealList.firstWhere(
-                    (map) => map['mealTitle'] == 'Breakfast',
-                    orElse: () => -1) ==
-                -1)
+                onTap: () => recipeListProvider.addMeal('Snack')),
+            if (!recipeListProvider.mealList
+                .any((map) => map['mealTitle'] == 'Breakfast'))
               SpeedDialChild(
                   label: 'Breakfast',
                   labelStyle: Theme.of(context).textTheme.labelMedium,
                   labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
-                  onTap: () => context.read<RecipeList>().addMeal('Breakfast')),
-            if (context.watch<RecipeList>().mealList.firstWhere(
-                    (map) => map['mealTitle'] == 'Lunch',
-                    orElse: () => -1) ==
-                -1)
+                  onTap: () => recipeListProvider.addMeal('Breakfast')),
+            if (!recipeListProvider.mealList
+                .any((map) => map['mealTitle'] == 'Lunch'))
               SpeedDialChild(
                   label: 'Lunch',
                   labelStyle: Theme.of(context).textTheme.labelMedium,
                   labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
-                  onTap: () => context.read<RecipeList>().addMeal('Lunch')),
-            if (context.watch<RecipeList>().mealList.firstWhere(
-                    (map) => map['mealTitle'] == 'Dinner',
-                    orElse: () => -1) ==
-                -1)
+                  onTap: () => recipeListProvider.addMeal('Lunch')),
+            if (!recipeListProvider.mealList
+                .any((map) => map['mealTitle'] == 'Dinner'))
               SpeedDialChild(
                   label: 'Dinner',
                   labelStyle: Theme.of(context).textTheme.labelMedium,
                   labelBackgroundColor: Color.fromARGB(255, 45, 190, 120),
-                  onTap: () => context.read<RecipeList>().addMeal('Dinner')),
+                  onTap: () => recipeListProvider.addMeal('Dinner')),
             SpeedDialChild(
               label: 'Custom Meal/Ingredient',
               labelStyle: Theme.of(context).textTheme.labelMedium,
