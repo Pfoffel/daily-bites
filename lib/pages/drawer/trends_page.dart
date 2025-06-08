@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart'; // Import for charts
+import 'package:provider/provider.dart';
+import 'package:health_app_v1/service/connect_db.dart'; // Import ConnectDb
 
 class TrendsPage extends StatefulWidget {
   const TrendsPage({super.key});
@@ -23,90 +25,179 @@ class _TrendsPageState extends State<TrendsPage> {
         title: Text('Trends', style: Theme.of(context).textTheme.labelLarge),
         elevation: 1, // Added elevation for consistency with HomePage
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0), // Consistent padding
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SummaryInsightCard(),
-            const SizedBox(height: 20),
-            // Timeframe selection dropdown
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: DropdownButtonFormField<String>(
-                // Changed to DropdownButtonFormField
-                decoration: InputDecoration(
-                  labelText: 'Time Frame',
-                  labelStyle: Theme.of(context).textTheme.headlineSmall,
-                  border: const OutlineInputBorder(), // Consistent border
+      body: Consumer<ConnectDb>( // Wrap with Consumer
+        builder: (context, connectDb, child) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0), // Consistent padding
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SummaryInsightCard(),
+                const SizedBox(height: 20),
+                // Timeframe selection dropdown
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: DropdownButtonFormField<String>(
+                    // Changed to DropdownButtonFormField
+                    decoration: InputDecoration(
+                      labelText: 'Time Frame',
+                      labelStyle: Theme.of(context).textTheme.headlineSmall,
+                      border: const OutlineInputBorder(), // Consistent border
+                    ),
+                    dropdownColor:
+                        _dropdownBackgroundColor, // Apply consistent dropdown background
+                    value: _selectedTimeframe,
+                    items: [
+                      DropdownMenuItem(
+                        value: 'weekly',
+                        child: Text(
+                          'Weekly',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.merge(_dropdownItemTextStyle),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'monthly',
+                        child: Text(
+                          'Monthly',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.merge(_dropdownItemTextStyle),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'quarterly',
+                        child: Text(
+                          'Quarterly',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.merge(_dropdownItemTextStyle),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: 'yearly',
+                        child: Text(
+                          'Yearly',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.merge(_dropdownItemTextStyle),
+                        ),
+                      ),
+                    ],
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _selectedTimeframe = newValue;
+                        });
+                      }
+                    },
+                  ),
                 ),
-                dropdownColor:
-                    _dropdownBackgroundColor, // Apply consistent dropdown background
-                value: _selectedTimeframe,
-                items: [
-                  DropdownMenuItem(
-                    value: 'weekly',
-                    child: Text(
-                      'Weekly',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge
-                          ?.merge(_dropdownItemTextStyle),
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: 'monthly',
-                    child: Text(
-                      'Monthly',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge
-                          ?.merge(_dropdownItemTextStyle),
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: 'quarterly',
-                    child: Text(
-                      'Quarterly',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge
-                          ?.merge(_dropdownItemTextStyle),
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: 'yearly',
-                    child: Text(
-                      'Yearly',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge
-                          ?.merge(_dropdownItemTextStyle),
-                    ),
-                  ),
-                ],
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedTimeframe = newValue;
-                    });
-                  }
-                },
-              ),
+                const SizedBox(height: 20),
+                // Updated MoodTrendChart to use FutureBuilder
+                FutureBuilder<List<FlSpot>>(
+                  future: connectDb.getMoodData(_selectedTimeframe),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      print('Error loading mood data: ${snapshot.error}');
+                      return _buildErrorWidget(context, 'Could not load mood data.');
+                    }
+                    // Pass a specific no-data message to MoodTrendChart
+                    return MoodTrendChart(
+                        timeframe: _selectedTimeframe,
+                        spots: snapshot.data ?? [],
+                        noDataMessage: 'No mood data available for this period.');
+                  },
+                ),
+                const SizedBox(height: 20),
+                // Updated IngredientImpactSection to use FutureBuilder
+                FutureBuilder<List<Map<String, String>>>(
+                  future: connectDb.getIngredientImpactData(_selectedTimeframe),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      print('Error loading ingredient impact data: ${snapshot.error}');
+                      return _buildErrorWidget(context, 'Could not load ingredient impact data.');
+                    }
+                    return IngredientImpactSection(
+                        timeframe: _selectedTimeframe,
+                        impactData: snapshot.data ?? []);
+                  },
+                ),
+                const SizedBox(height: 20),
+                // Updated WeeklyStatsSection to use FutureBuilder
+                FutureBuilder<Map<String, String>>(
+                  future: connectDb.getStatisticsData(_selectedTimeframe),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      print('Error loading statistics data: ${snapshot.error}');
+                      return _buildErrorWidget(context, 'Could not load statistics.');
+                    }
+                    return WeeklyStatsSection(
+                        timeframe: _selectedTimeframe,
+                        statsData: snapshot.data ?? {});
+                  },
+                ),
+                const SizedBox(height: 20),
+                // Updated IngredientDiversityGraph to use FutureBuilder
+                FutureBuilder<List<FlSpot>>(
+                  future: connectDb.getIngredientDiversityData(_selectedTimeframe),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      print('Error loading ingredient diversity data: ${snapshot.error}');
+                      return _buildErrorWidget(context, 'Could not load ingredient diversity data.');
+                    }
+                    // Pass a specific no-data message to IngredientDiversityGraph
+                    return IngredientDiversityGraph(
+                        timeframe: _selectedTimeframe,
+                        spots: snapshot.data ?? [],
+                        noDataMessage: 'Not enough variety data to display chart.');
+                  },
+                ),
+                const SizedBox(height: 20),
+                const LoggingStreakCard(),
+                const SizedBox(height: 20),
+                const IngredientSearchSection(),
+              ],
             ),
-            const SizedBox(height: 20),
-            MoodTrendChart(timeframe: _selectedTimeframe),
-            const SizedBox(height: 20),
-            IngredientImpactSection(timeframe: _selectedTimeframe),
-            const SizedBox(height: 20),
-            WeeklyStatsSection(timeframe: _selectedTimeframe),
-            const SizedBox(height: 20),
-            IngredientDiversityGraph(timeframe: _selectedTimeframe),
-            const SizedBox(height: 20),
-            const LoggingStreakCard(),
-            const SizedBox(height: 20),
-            const IngredientSearchSection(),
-          ],
+          );
+        },
+      ),
+    );
+  }
+
+  // Helper widget for displaying styled error messages
+  Widget _buildErrorWidget(BuildContext context, String message) {
+    return Center(
+      child: Card(
+        color: Theme.of(context).colorScheme.errorContainer.withOpacity(0.7),
+        margin: const EdgeInsets.all(8),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            message,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onErrorContainer,
+              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );
@@ -123,7 +214,7 @@ class SummaryInsightCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
           borderRadius:
               BorderRadius.circular(12)), // Consistent rounded corners
-      color: Color.fromARGB(255, 9, 37, 29),
+      color: const Color.fromARGB(255, 9, 37, 29),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -163,84 +254,56 @@ class SummaryInsightCard extends StatelessWidget {
 
 class MoodTrendChart extends StatelessWidget {
   final String timeframe;
-  const MoodTrendChart({super.key, required this.timeframe});
+  final List<FlSpot> spots;
+  final String noDataMessage; // Added for custom no-data message
 
-  // Fake data generation based on timeframe
-  List<FlSpot> _generateMoodSpots(String timeframe) {
-    switch (timeframe) {
-      case 'weekly':
-        // 7 days
-        return [
-          const FlSpot(0, 3),
-          const FlSpot(1, 5),
-          const FlSpot(2, 4),
-          const FlSpot(3, 6),
-          const FlSpot(4, 7),
-          const FlSpot(5, 5),
-          const FlSpot(6, 6),
-        ];
-      case 'monthly':
-        // 4 weeks
-        return [
-          const FlSpot(0, 4),
-          const FlSpot(1, 5.5),
-          const FlSpot(2, 5),
-          const FlSpot(3, 6.5),
-        ];
-      case 'quarterly':
-        // 3 months
-        return [
-          const FlSpot(0, 5),
-          const FlSpot(1, 6),
-          const FlSpot(2, 5.5),
-        ];
-      case 'yearly':
-        // 4 quarters
-        return [
-          const FlSpot(0, 5.5),
-          const FlSpot(1, 6),
-          const FlSpot(2, 6.5),
-          const FlSpot(3, 7),
-        ];
-      default:
-        return [];
-    }
-  }
+  const MoodTrendChart({
+    super.key,
+    required this.timeframe,
+    required this.spots,
+    this.noDataMessage = "No data to display chart.", // Default message
+  });
 
   List<String> _getBottomTitles(String timeframe, double value) {
+    // Titles might need to be adjusted based on actual data from FlSpot.x values
+    // For now, keep existing logic, but it might need to be more dynamic
+    // if FlSpot.x values are not simple indices like 0, 1, 2...
     switch (timeframe) {
       case 'weekly':
         const titles = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        return [titles[value.toInt()]];
+        if (value.toInt() >= 0 && value.toInt() < titles.length) {
+          return [titles[value.toInt()]];
+        }
+        return ['']; // Default or error case
       case 'monthly':
-        const titles = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-        if (value.toInt() < titles.length) return [titles[value.toInt()]];
-        return [];
+        // If spots.x are days 1-31
+        return [value.toInt().toString()];
       case 'quarterly':
-        const titles = ['Month 1', 'Month 2', 'Month 3'];
-        if (value.toInt() < titles.length) return [titles[value.toInt()]];
-        return [];
+         // If spots.x are days (0-90 approx)
+        return ['Day ${value.toInt() + 1}']; // Example
       case 'yearly':
-        const titles = ['Q1', 'Q2', 'Q3', 'Q4'];
-        if (value.toInt() < titles.length) return [titles[value.toInt()]];
-        return [];
+        // If spots.x are days (0-365 approx)
+        return ['Day ${value.toInt() + 1}']; // Example
       default:
-        return [];
+        return [''];
     }
   }
 
-  double _getMaxX(String timeframe) {
+  double _getMaxX(String timeframe, List<FlSpot> spots) {
+    if (spots.isEmpty) return 0;
+    // Determine maxX from the actual data spots
+    // This makes the chart more adaptive to the data range
+    double maxVal = spots.map((spot) => spot.x).reduce((a, b) => a > b ? a : b);
+
+    // Add some padding or use specific logic per timeframe if needed
     switch (timeframe) {
       case 'weekly':
-        return 6;
+        return 6; // Assuming 0-6 for days of week
       case 'monthly':
-        return 3;
-      case 'quarterly':
-        return 2;
-      case 'yearly':
-        return 3;
+        // For days of month, could be up to 30 or 31
+        return DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day.toDouble() -1;
       default:
-        return 0;
+        return maxVal; // For other timeframes, use the max x from data
     }
   }
 
@@ -249,20 +312,16 @@ class MoodTrendChart extends StatelessWidget {
       case 'weekly':
         return 1;
       case 'monthly':
-        return 1;
-      case 'quarterly':
-        return 1;
-      case 'yearly':
-        return 1;
+         return 7; // Show weekly ticks for monthly view if x is day number
       default:
+        // Dynamic interval based on range, or fixed as before
         return 1;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final spots = _generateMoodSpots(timeframe);
-    final maxX = _getMaxX(timeframe);
+    final maxX = _getMaxX(timeframe, spots);
     final intervalX = _getIntervalX(timeframe);
 
     return Card(
@@ -270,7 +329,7 @@ class MoodTrendChart extends StatelessWidget {
       shape: RoundedRectangleBorder(
           borderRadius:
               BorderRadius.circular(12)), // Consistent rounded corners
-      color: Color.fromARGB(255, 9, 37, 29),
+      color: const Color.fromARGB(255, 9, 37, 29),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -285,7 +344,14 @@ class MoodTrendChart extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               height: 200,
-              child: LineChart(
+              child: spots.isEmpty
+                  ? Center(
+                      child: Text(
+                      noDataMessage,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                      textAlign: TextAlign.center,
+                    ))
+                  : LineChart(
                 LineChartData(
                   gridData: const FlGridData(show: false),
                   titlesData: FlTitlesData(
@@ -293,7 +359,7 @@ class MoodTrendChart extends StatelessWidget {
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 28,
-                        interval: 1,
+                        interval: 2, // Mood score 0-10, interval 2
                       ),
                     ),
                     bottomTitles: AxisTitles(
@@ -330,24 +396,24 @@ class MoodTrendChart extends StatelessWidget {
                   ),
                   minX: 0,
                   maxX: maxX,
-                  minY: 0,
-                  maxY: 8,
+                  minY: 0, // Mood score 0-10
+                  maxY: 10, // Mood score 0-10
                   lineBarsData: [
                     LineChartBarData(
-                      spots: spots,
+                      spots: spots, // Use passed spots
                       isCurved: true,
                       gradient: LinearGradient(
                         colors: [Colors.blue.shade200, Colors.blue.shade800],
                       ),
                       barWidth: 4,
                       isStrokeCapRound: true,
-                      dotData: const FlDotData(show: false),
+                      dotData: const FlDotData(show: true), // Show dots on data points
                       belowBarData: BarAreaData(
                         show: true,
                         gradient: LinearGradient(
                           colors: [
-                            Colors.blue.shade200.withValues(alpha: 0.3),
-                            Colors.blue.shade800.withValues(alpha: 0.3),
+                            Colors.blue.shade200.withOpacity(0.3), // Use withOpacity
+                            Colors.blue.shade800.withOpacity(0.3), // Use withOpacity
                           ],
                         ),
                       ),
@@ -378,58 +444,22 @@ class IngredientImpactCard extends StatelessWidget {
     return Chip(
       label: Text(
         '$ingredient - $impact',
-        style: Theme.of(context).textTheme.bodyLarge, // Consistent text style
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white), // Ensure text is visible on dark chip
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      backgroundColor: Color.fromARGB(255, 9, 37, 29),
+      backgroundColor: const Color.fromARGB(255, 15, 69, 53), // Slightly different color for emphasis
     );
   }
 }
 
 class IngredientImpactSection extends StatelessWidget {
   final String timeframe;
-  const IngredientImpactSection({super.key, required this.timeframe});
+  final List<Map<String, String>> impactData;
 
-  // Fake data for ingredient impact based on timeframe
-  List<Map<String, String>> _generateImpactData(String timeframe) {
-    switch (timeframe) {
-      case 'weekly':
-        return [
-          {'ingredient': 'Avocado', 'impact': '👍 85% Good'},
-          {'ingredient': 'Cheese', 'impact': '👎 70% Bad'},
-          {'ingredient': 'Banana', 'impact': '👍 75% Good'},
-          {'ingredient': 'Salmon', 'impact': '👍 90% Good'},
-          {'ingredient': 'Sugar', 'impact': '👎 80% Bad'},
-          {'ingredient': 'Berries', 'impact': '👍 88% Good'},
-        ];
-      case 'monthly':
-        return [
-          {'ingredient': 'Broccoli', 'impact': '👍 80% Good'},
-          {'ingredient': 'Rice', 'impact': '👍 70% Good'},
-          {'ingredient': 'Chicken Breast', 'impact': '👍 95% Good'},
-          {'ingredient': 'Sugar', 'impact': '👎 85% Bad'},
-        ];
-      case 'quarterly':
-        return [
-          {'ingredient': 'Salmon', 'impact': '👍 92% Good'},
-          {'ingredient': 'Berries', 'impact': '👍 90% Good'},
-          {'ingredient': 'Cheese', 'impact': '👎 75% Bad'},
-        ];
-      case 'yearly':
-        return [
-          {'ingredient': 'Avocado', 'impact': '👍 88% Good'},
-          {'ingredient': 'Salmon', 'impact': '👍 93% Good'},
-          {'ingredient': 'Sugar', 'impact': '👎 78% Bad'},
-        ];
-      default:
-        return [];
-    }
-  }
+  const IngredientImpactSection({super.key, required this.timeframe, required this.impactData});
 
   @override
   Widget build(BuildContext context) {
-    final impactData = _generateImpactData(timeframe);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -439,16 +469,26 @@ class IngredientImpactSection extends StatelessWidget {
               Theme.of(context).textTheme.labelMedium, // Consistent title style
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: impactData.map((data) {
-            return IngredientImpactCard(
-              ingredient: data['ingredient']!,
-              impact: data['impact']!,
-            );
-          }).toList(),
-        ),
+        impactData.isEmpty
+            ? Center(
+                child: Padding( // Added padding for consistency
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  child: Text(
+                    "No ingredient impact data available for this period.",
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                    textAlign: TextAlign.center,
+                  ),
+                ))
+            : Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: impactData.map((data) {
+                  return IngredientImpactCard(
+                    ingredient: data['ingredient']!,
+                    impact: data['impact']!,
+                  );
+                }).toList(),
+              ),
       ],
     );
   }
@@ -456,39 +496,17 @@ class IngredientImpactSection extends StatelessWidget {
 
 class WeeklyStatsSection extends StatelessWidget {
   final String timeframe;
-  const WeeklyStatsSection({super.key, required this.timeframe});
+  final Map<String, String> statsData;
 
-  // Fake data for weekly stats based on timeframe
-  Map<String, String> _generateStatsData(String timeframe) {
-    switch (timeframe) {
-      case 'weekly':
-        return {
-          'Average Mood': '6.2/10',
-          'Most Logged Ingredient': 'Water (56 times)',
-        };
-      case 'monthly':
-        return {
-          'Average Mood': '6.5/10',
-          'Most Logged Ingredient': 'Water (210 times)',
-        };
-      case 'quarterly':
-        return {
-          'Average Mood': '6.8/10',
-          'Most Logged Ingredient': 'Water (600 times)',
-        };
-      case 'yearly':
-        return {
-          'Average Mood': '7.0/10',
-          'Most Logged Ingredient': 'Water (2200 times)',
-        };
-      default:
-        return {};
-    }
-  }
+  const WeeklyStatsSection({super.key, required this.timeframe, required this.statsData});
 
   @override
   Widget build(BuildContext context) {
-    final statsData = _generateStatsData(timeframe);
+    final String avgMood = statsData['Average Mood'] ?? 'N/A';
+    final String mostLogged = statsData['Most Logged Ingredient'] ?? 'N/A';
+    final bool noData = (avgMood == 'N/A' && mostLogged == 'N/A') ||
+                        (avgMood == 'No data' && mostLogged == 'No data') ||
+                        (statsData.isEmpty && avgMood == 'N/A'); // Check if initial map was empty
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,21 +517,30 @@ class WeeklyStatsSection extends StatelessWidget {
               Theme.of(context).textTheme.labelMedium, // Consistent title style
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-                child: Text('Average Mood: ${statsData['Average Mood']}',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyLarge)), // Consistent body text style
-            Expanded(
+        noData
+          ? Center(
+              child: Padding( // Added padding for consistency
+                padding: const EdgeInsets.symmetric(vertical: 20.0),
                 child: Text(
-                    'Most Logged Ingredient: ${statsData['Most Logged Ingredient']}',
+                  "No statistics available for this period.",
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                  textAlign: TextAlign.center,
+                ),
+              ))
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Average Mood: $avgMood',
                     style: Theme.of(context)
                         .textTheme
-                        .bodyLarge)), // Consistent body text style
-          ],
-        ),
+                        .bodyLarge),
+                const SizedBox(height: 4),
+                Text('Most Logged Ingredient: $mostLogged',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge),
+              ],
+            ),
       ],
     );
   }
@@ -521,130 +548,77 @@ class WeeklyStatsSection extends StatelessWidget {
 
 class IngredientDiversityGraph extends StatelessWidget {
   final String timeframe;
-  const IngredientDiversityGraph({super.key, required this.timeframe});
+  final List<FlSpot> spots;
+  final String noDataMessage; // Added for custom no-data message
 
-  // Fake data generation based on timeframe
-  List<FlSpot> _generateDiversitySpots(String timeframe) {
-    switch (timeframe) {
-      case 'weekly':
-        // 7 days
-        return [
-          const FlSpot(0, 10),
-          const FlSpot(1, 12),
-          const FlSpot(2, 11),
-          const FlSpot(3, 15),
-          const FlSpot(4, 13),
-          const FlSpot(5, 14),
-          const FlSpot(6, 16),
-        ];
-      case 'monthly':
-        // 4 weeks
-        return [
-          const FlSpot(0, 15),
-          const FlSpot(1, 18),
-          const FlSpot(2, 17),
-          const FlSpot(3, 20),
-        ];
-      case 'quarterly':
-        // 3 months
-        return [
-          const FlSpot(0, 20),
-          const FlSpot(1, 25),
-          const FlSpot(2, 23),
-        ];
-      case 'yearly':
-        // 4 quarters
-        return [
-          const FlSpot(0, 25),
-          const FlSpot(1, 30),
-          const FlSpot(2, 28),
-          const FlSpot(3, 35),
-        ];
-      default:
-        return [];
-    }
-  }
+  const IngredientDiversityGraph({
+    super.key,
+    required this.timeframe,
+    required this.spots,
+    this.noDataMessage = "No data to display chart.", // Default message
+  });
 
   List<String> _getBottomTitles(String timeframe, double value) {
+    // This logic might need to be more dynamic based on FlSpot.x values from DB
     switch (timeframe) {
       case 'weekly':
         const titles = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        return [titles[value.toInt()]];
-      case 'monthly':
-        const titles = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-        if (value.toInt() < titles.length) return [titles[value.toInt()]];
-        return [];
-      case 'quarterly':
-        const titles = ['Month 1', 'Month 2', 'Month 3'];
-        if (value.toInt() < titles.length) return [titles[value.toInt()]];
-        return [];
-      case 'yearly':
-        const titles = ['Q1', 'Q2', 'Q3', 'Q4'];
-        if (value.toInt() < titles.length) return [titles[value.toInt()]];
-        return [];
+         if (value.toInt() >= 0 && value.toInt() < titles.length) {
+          return [titles[value.toInt()]];
+        }
+        return [''];
+      case 'monthly': // Assuming x is week number 1-4/5
+        return ['Wk ${value.toInt()}'];
+      case 'quarterly': // Assuming x is month number 1-3 for the quarter
+        return ['M${value.toInt()}'];
+      case 'yearly': // Assuming x is month number 1-12
+        return ['M${value.toInt()}'];
       default:
-        return [];
+        return [''];
     }
   }
 
-  double _getMaxX(String timeframe) {
+  double _getMaxX(String timeframe, List<FlSpot> spots) {
+    if (spots.isEmpty) return 0;
+    double maxVal = spots.map((spot) => spot.x).reduce((a, b) => a > b ? a : b);
+
     switch (timeframe) {
       case 'weekly':
-        return 6;
+        return 6; // 0-6 for days
       case 'monthly':
-        return 3;
+        return spots.isNotEmpty ? maxVal : 4; // Max week number, default 4
       case 'quarterly':
-        return 2;
+         return spots.isNotEmpty ? maxVal : 3; // Max month in Q, default 3
       case 'yearly':
-        return 3;
+        return spots.isNotEmpty ? maxVal : 12; // Max month in Y, default 12
       default:
-        return 0;
+        return maxVal;
     }
   }
 
   double _getIntervalX(String timeframe) {
-    switch (timeframe) {
-      case 'weekly':
-        return 1;
-      case 'monthly':
-        return 1;
-      case 'quarterly':
-        return 1;
-      case 'yearly':
-        return 1;
-      default:
-        return 1;
-    }
+    // This can remain fairly static or be made dynamic if needed
+    return 1;
   }
 
-  double _getMaxY(String timeframe) {
-    switch (timeframe) {
-      case 'weekly':
-        return 20;
-      case 'monthly':
-        return 25;
-      case 'quarterly':
-        return 30;
-      case 'yearly':
-        return 40;
-      default:
-        return 20;
-    }
+  double _getMaxY(List<FlSpot> spots) {
+    if (spots.isEmpty) return 20; // Default if no data
+    double maxVal = spots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
+    return (maxVal / 5).ceil() * 5; // Round up to nearest 5 for nice ticks
   }
 
   @override
   Widget build(BuildContext context) {
-    final diversitySpots = _generateDiversitySpots(timeframe);
-    final maxX = _getMaxX(timeframe);
+    final maxX = _getMaxX(timeframe, spots);
     final intervalX = _getIntervalX(timeframe);
-    final maxY = _getMaxY(timeframe);
+    final maxY = _getMaxY(spots);
 
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
           borderRadius:
               BorderRadius.circular(12)), // Consistent rounded corners
-      color: Color.fromARGB(255, 9, 37, 29),
+      color: const Color.fromARGB(255, 9, 37, 29),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -659,15 +633,22 @@ class IngredientDiversityGraph extends StatelessWidget {
             const SizedBox(height: 16),
             SizedBox(
               height: 200,
-              child: LineChart(
+              child: spots.isEmpty
+                ? Center(
+                    child: Text(
+                    noDataMessage,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                    textAlign: TextAlign.center,
+                  ))
+                : LineChart(
                 LineChartData(
                   gridData: const FlGridData(show: false),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 28,
-                        interval: maxY / 5, // Dynamic interval based on max Y
+                        reservedSize: 28, // Adjust as needed
+                        interval: (maxY / 4).ceilToDouble(), // Dynamic interval
                       ),
                     ),
                     bottomTitles: AxisTitles(
@@ -708,20 +689,20 @@ class IngredientDiversityGraph extends StatelessWidget {
                   maxY: maxY,
                   lineBarsData: [
                     LineChartBarData(
-                      spots: diversitySpots,
+                      spots: spots, // Use passed spots
                       isCurved: true,
                       gradient: LinearGradient(
                         colors: [Colors.green.shade200, Colors.green.shade800],
                       ),
                       barWidth: 4,
                       isStrokeCapRound: true,
-                      dotData: const FlDotData(show: false),
+                      dotData: const FlDotData(show: true), // Show dots
                       belowBarData: BarAreaData(
                         show: true,
                         gradient: LinearGradient(
                           colors: [
-                            Colors.green.shade200.withValues(alpha: 0.3),
-                            Colors.green.shade800.withValues(alpha: 0.3),
+                            Colors.green.shade200.withOpacity(0.3), // Use withOpacity
+                            Colors.green.shade800.withOpacity(0.3), // Use withOpacity
                           ],
                         ),
                       ),
@@ -742,37 +723,70 @@ class LoggingStreakCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: SizedBox(
-        width: 300,
-        child: Card(
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-              borderRadius:
-                  BorderRadius.circular(12)), // Consistent rounded corners
-          color: Color.fromARGB(255, 45, 190, 120),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Text(
-                  'Logging Streak',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium, // Consistent title style
+    final connectDb = Provider.of<ConnectDb>(context, listen: false);
+    return FutureBuilder<int>(
+      future: connectDb.getUserLoggingStreak(),
+      builder: (context, snapshot) {
+        String streakText = 'Loading streak...';
+        bool hasError = false;
+        if (snapshot.connectionState == ConnectionState.done) {
+          if (snapshot.hasError) {
+            hasError = true;
+            streakText = 'Error loading streak';
+            print('Error loading streak: ${snapshot.error}'); // Log error
+          } else {
+            final streak = snapshot.data ?? 0;
+            if (streak == 0) {
+              streakText = 'No active streak. Log today!';
+            } else if (streak == 1) {
+              streakText = '🎉 1-day streak!';
+            } else {
+              streakText = '🎉 $streak-day streak! Keep it up!';
+            }
+          }
+        }
+
+        return Center(
+          child: SizedBox(
+            width: 300,
+            child: Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(12)), // Consistent rounded corners
+              color: hasError
+                  ? Theme.of(context).colorScheme.errorContainer.withOpacity(0.8)
+                  : const Color.fromARGB(255, 45, 190, 120),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text(
+                      'Logging Streak',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: hasError ? Theme.of(context).colorScheme.onErrorContainer : Colors.white
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      CircularProgressIndicator(
+                        color: hasError ? Theme.of(context).colorScheme.onErrorContainer : Colors.white,
+                      )
+                    else
+                      Text(
+                        streakText,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: hasError ? Theme.of(context).colorScheme.onErrorContainer : Colors.white
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '🎉 21-day streak! Keep it up!',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyLarge, // Consistent body text style
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -782,17 +796,7 @@ class IngredientSearchSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fake list of popular ingredients for search results
-    const List<String> popularIngredients = [
-      'Chicken Breast',
-      'Broccoli',
-      'Rice',
-      'Eggs',
-      'Milk',
-      'Bread',
-      'Apple',
-      'Salmon',
-    ];
+    final connectDb = Provider.of<ConnectDb>(context, listen: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -814,23 +818,51 @@ class IngredientSearchSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        // Displaying fake popular ingredients as a placeholder for search results
-        Column(
-          // Use Column to display the list of ingredients
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: popularIngredients
-              .map(
-                (ingredient) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+        Text( // Added a small sub-header for clarity
+          'Popular Ingredients:',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Colors.white70),
+        ),
+        const SizedBox(height: 8),
+        FutureBuilder<List<String>>(
+          future: connectDb.getPopularIngredients(limit: 8),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              print('Error popular ingredients: ${snapshot.error}'); // Log error
+              return _buildErrorWidget(context, 'Could not load popular ingredients.'); // Use helper
+            }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Center(
+                child: Padding( // Added padding for consistency
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
                   child: Text(
-                    '- $ingredient',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyLarge, // Consistent body text style
+                    'No popular ingredients found.',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-              )
-              .toList(),
+                ));
+            }
+
+            final popularIngredients = snapshot.data!;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: popularIngredients
+                  .map(
+                    (ingredient) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Text(
+                        '- $ingredient',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyLarge, // Consistent body text style
+                      ),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
         ),
       ],
     );
