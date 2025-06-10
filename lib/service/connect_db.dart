@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:health_app_v1/models/recipe.dart';
 import 'package:health_app_v1/models/user_recipe.dart'; // Ensure UserRecipe is imported
+import 'package:fl_chart/fl_chart.dart';
 
 class ConnectDb extends ChangeNotifier {
   String _uid = FirebaseAuth.instance.currentUser!.uid;
@@ -124,7 +125,8 @@ class ConnectDb extends ChangeNotifier {
   CollectionReference get recipes => _recipes;
   CollectionReference get mood => _mood;
   List get defaultMeals =>
-      (_recipesList.indexWhere((recipe) => recipe.id == "0") > -1) // Changed recipe.id == 0 to recipe.id == "0"
+      (_recipesList.indexWhere((recipe) => recipe.id == "0") >
+              -1) // Changed recipe.id == 0 to recipe.id == "0"
           ? _defaultMeals
           : _initializeMeals;
   List get defaultMoods => _defaultMoods;
@@ -261,9 +263,9 @@ class ConnectDb extends ChangeNotifier {
   Future<List<UserRecipe>> getSharedRecipes() async {
     try {
       final QuerySnapshot<Map<String, dynamic>> querySnapshot =
-          await _sharedRecipes.orderBy('createdAt', descending: true).get() 
-          as QuerySnapshot<Map<String, dynamic>>; // Cast here
-      
+          await _sharedRecipes.orderBy('createdAt', descending: true).get()
+              as QuerySnapshot<Map<String, dynamic>>; // Cast here
+
       return querySnapshot.docs
           .map((doc) => UserRecipe.fromSnapshot(doc))
           .toList();
@@ -356,7 +358,8 @@ class ConnectDb extends ChangeNotifier {
     }
   }
 
-  Future<List<Map<String, String>>> getIngredientImpactData(String timeframe) async {
+  Future<List<Map<String, String>>> getIngredientImpactData(
+      String timeframe) async {
     final DateTime startDate = _getStartDate(timeframe);
     final DateTime endDate = DateTime.now();
     Map<String, List<double>> ingredientMoodScores = {};
@@ -366,7 +369,9 @@ class ConnectDb extends ChangeNotifier {
       final mealsSnapshot = await _meals
           .doc(_uid)
           .collection('daily_entries')
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate), isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+          .where('date',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+              isLessThanOrEqualTo: Timestamp.fromDate(endDate))
           .get();
 
       if (mealsSnapshot.docs.isEmpty) {
@@ -413,13 +418,16 @@ class ConnectDb extends ChangeNotifier {
           final recipeIds = (meal['recipes'] as List<dynamic>).cast<String>();
           for (String recipeId in recipeIds) {
             Recipe? recipe = recipeMap[recipeId];
-            if (recipe != null && recipe.title != 'Apple') { // Assuming 'Apple' is a default/placeholder
+            if (recipe != null && recipe.title != 'Apple') {
+              // Assuming 'Apple' is a default/placeholder
               // For simplicity, let's assume recipe titles are unique enough to act as ingredient names
               // Or, if ingredients are stored within the recipe object, iterate through them.
               // This part depends heavily on the 'Recipe' model structure.
               // Let's assume recipe.title is the "ingredient" for now.
               String ingredientName = recipe.title;
-              ingredientMoodScores.putIfAbsent(ingredientName, () => []).add(moodScore);
+              ingredientMoodScores
+                  .putIfAbsent(ingredientName, () => [])
+                  .add(moodScore);
             }
           }
         }
@@ -433,21 +441,24 @@ class ConnectDb extends ChangeNotifier {
       List<Map<String, String>> impactData = [];
       ingredientMoodScores.forEach((ingredient, scores) {
         double averageScore = scores.reduce((a, b) => a + b) / scores.length;
-        String impactEmoji = averageScore >= 6 ? '👍' : (averageScore < 4 ? '👎' : '😐');
+        String impactEmoji =
+            averageScore >= 6 ? '👍' : (averageScore < 4 ? '👎' : '😐');
         // Representing impact as percentage of "good days" (mood >= 6)
-        double goodDaysPercent = (scores.where((s) => s >= 6).length / scores.length) * 100;
+        double goodDaysPercent =
+            (scores.where((s) => s >= 6).length / scores.length) * 100;
         impactData.add({
           'ingredient': ingredient,
           'impact': '$impactEmoji ${goodDaysPercent.toStringAsFixed(0)}% Good',
-          'averageScore': averageScore.toStringAsFixed(1), // For potential sorting or more detail
+          'averageScore': averageScore
+              .toStringAsFixed(1), // For potential sorting or more detail
         });
       });
 
       // Sort by good days percentage (descending)
-      impactData.sort((a, b) => double.parse(b['averageScore']!).compareTo(double.parse(a['averageScore']!)));
+      impactData.sort((a, b) => double.parse(b['averageScore']!)
+          .compareTo(double.parse(a['averageScore']!)));
 
       return impactData;
-
     } catch (e) {
       print('Error fetching ingredient impact data: $e');
       return [];
@@ -465,7 +476,9 @@ class ConnectDb extends ChangeNotifier {
       final moodsSnapshot = await _mood
           .doc(_uid)
           .collection('daily_entries')
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate), isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+          .where('date',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+              isLessThanOrEqualTo: Timestamp.fromDate(endDate))
           .get();
 
       if (moodsSnapshot.docs.isNotEmpty) {
@@ -485,7 +498,9 @@ class ConnectDb extends ChangeNotifier {
       final mealsSnapshot = await _meals
           .doc(_uid)
           .collection('daily_entries')
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate), isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+          .where('date',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+              isLessThanOrEqualTo: Timestamp.fromDate(endDate))
           .get();
 
       if (mealsSnapshot.docs.isNotEmpty) {
@@ -503,7 +518,8 @@ class ConnectDb extends ChangeNotifier {
               // Assuming recipe.title is the ingredient name
               if (recipe != null && recipe.title != 'Apple') {
                 String ingredientName = recipe.title;
-                ingredientCounts[ingredientName] = (ingredientCounts[ingredientName] ?? 0) + 1;
+                ingredientCounts[ingredientName] =
+                    (ingredientCounts[ingredientName] ?? 0) + 1;
               }
             }
           }
@@ -521,7 +537,8 @@ class ConnectDb extends ChangeNotifier {
       if (ingredientCounts.isNotEmpty) {
         var sortedIngredients = ingredientCounts.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
-        mostLoggedIngredientString = "${sortedIngredients.first.key} (${sortedIngredients.first.value} times)";
+        mostLoggedIngredientString =
+            "${sortedIngredients.first.key} (${sortedIngredients.first.value} times)";
       }
 
       if (moodScores.isEmpty && ingredientCounts.isEmpty) {
@@ -532,7 +549,6 @@ class ConnectDb extends ChangeNotifier {
         'Average Mood': avgMoodString,
         'Most Logged Ingredient': mostLoggedIngredientString,
       };
-
     } catch (e) {
       print('Error fetching statistics data: $e');
       return {'Average Mood': 'Error', 'Most Logged Ingredient': 'Error'};
@@ -542,13 +558,16 @@ class ConnectDb extends ChangeNotifier {
   Future<List<FlSpot>> getIngredientDiversityData(String timeframe) async {
     final DateTime startDate = _getStartDate(timeframe);
     final DateTime endDate = DateTime.now();
-    Map<double, Set<String>> diversityData = {}; // Key: time unit (day, week), Value: Set of unique ingredients
+    Map<double, Set<String>> diversityData =
+        {}; // Key: time unit (day, week), Value: Set of unique ingredients
 
     try {
       final mealsSnapshot = await _meals
           .doc(_uid)
           .collection('daily_entries')
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate), isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+          .where('date',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+              isLessThanOrEqualTo: Timestamp.fromDate(endDate))
           .orderBy('date')
           .get();
 
@@ -573,7 +592,7 @@ class ConnectDb extends ChangeNotifier {
             timeKey = (date.day / 7).ceil().toDouble();
             break;
           case 'quarterly': // Group by month of the quarter
-             timeKey = date.month.toDouble(); // Simplified: month number
+            timeKey = date.month.toDouble(); // Simplified: month number
             break;
           case 'yearly': // Group by month of the year
             timeKey = date.month.toDouble();
@@ -601,14 +620,13 @@ class ConnectDb extends ChangeNotifier {
       }
 
       List<FlSpot> spots = diversityData.entries
-        .map((entry) => FlSpot(entry.key, entry.value.length.toDouble()))
-        .toList();
+          .map((entry) => FlSpot(entry.key, entry.value.length.toDouble()))
+          .toList();
 
       // Sort spots by timeKey for chronological order in the chart
-      spots.sort((a,b) => a.x.compareTo(b.x));
+      spots.sort((a, b) => a.x.compareTo(b.x));
 
       return spots;
-
     } catch (e) {
       print('Error fetching ingredient diversity data: $e');
       return [];
@@ -638,7 +656,8 @@ class ConnectDb extends ChangeNotifier {
           final moods = data['moods'] as List<dynamic>;
           bool hasActualEntry = moods.any((mood) => mood['score'] != -1);
           if (hasActualEntry) {
-            entryDates.add(DateTime(date.year, date.month, date.day)); // Normalize to ignore time
+            entryDates.add(DateTime(
+                date.year, date.month, date.day)); // Normalize to ignore time
           }
         }
       }
@@ -650,20 +669,23 @@ class ConnectDb extends ChangeNotifier {
       // Sort again just in case normalization or set conversion changed order (though unlikely for descending query)
       entryDates.sort((a, b) => b.compareTo(a));
 
-
       int streak = 0;
       DateTime today = DateTime.now();
       DateTime todayNormalized = DateTime(today.year, today.month, today.day);
-      DateTime yesterdayNormalized = DateTime(today.year, today.month, today.day - 1);
+      DateTime yesterdayNormalized =
+          DateTime(today.year, today.month, today.day - 1);
 
       // Check if the most recent entry is today or yesterday
-      if (entryDates.first == todayNormalized || entryDates.first == yesterdayNormalized) {
+      if (entryDates.first == todayNormalized ||
+          entryDates.first == yesterdayNormalized) {
         streak = 1;
-        DateTime expectedDate = DateTime(entryDates.first.year, entryDates.first.month, entryDates.first.day - 1);
+        DateTime expectedDate = DateTime(entryDates.first.year,
+            entryDates.first.month, entryDates.first.day - 1);
         for (int i = 1; i < entryDates.length; i++) {
           if (entryDates[i] == expectedDate) {
             streak++;
-            expectedDate = DateTime(expectedDate.year, expectedDate.month, expectedDate.day - 1);
+            expectedDate = DateTime(
+                expectedDate.year, expectedDate.month, expectedDate.day - 1);
           } else {
             break; // Streak broken
           }
@@ -674,7 +696,6 @@ class ConnectDb extends ChangeNotifier {
       }
 
       return streak;
-
     } catch (e) {
       print('Error calculating user logging streak: $e');
       return 0; // Return 0 on error
@@ -694,7 +715,8 @@ class ConnectDb extends ChangeNotifier {
 
       // Using recipe titles as ingredients, excluding "Apple"
       List<String> ingredientNames = _recipesList
-          .where((recipe) => recipe.title.toLowerCase() != 'apple') // Filter out 'Apple'
+          .where((recipe) =>
+              recipe.title.toLowerCase() != 'apple') // Filter out 'Apple'
           .map((recipe) => recipe.title)
           .toSet() // Get unique names
           .toList();
@@ -706,7 +728,6 @@ class ConnectDb extends ChangeNotifier {
         return ingredientNames.sublist(0, limit);
       }
       return ingredientNames;
-
     } catch (e) {
       print('Error fetching popular ingredients: $e');
       return [];
