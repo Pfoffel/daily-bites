@@ -150,6 +150,7 @@ class _HomePageState extends State<HomePage> {
                   "DEBUG: Meals data not found or invalid for ${dateProvider.sanitizedDate}. Using default meals list for display.");
               mealList =
                   _defaultMeals; // Display default meals until valid data arrives
+              db.initializeMeals(dateProvider.sanitizedDate, db.uid);
             } else {
               mealList =
                   data['meals'] as List; // Use the actual data from Firebase

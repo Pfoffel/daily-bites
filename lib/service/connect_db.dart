@@ -33,7 +33,7 @@ class ConnectDb extends ChangeNotifier {
   final List _initializeMeals = [
     {
       'mealTitle': 'Breakfast',
-      'recipes': ["0"] // Changed 0 to "0"
+      'recipes': [] // Changed 0 to "0"
     },
     {'mealTitle': 'Lunch', 'recipes': []},
     {'mealTitle': 'Dinner', 'recipes': []}
