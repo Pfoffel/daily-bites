@@ -6,6 +6,7 @@ import 'package:health_app_v1/models/recipe.dart';
 import 'package:health_app_v1/service/connect_db.dart';
 import 'package:provider/provider.dart';
 import 'package:health_app_v1/utils/trend_chart_utils.dart';
+import 'dart:math'; // For max function
 
 class TrendsPage extends StatefulWidget {
   const TrendsPage({super.key});
@@ -210,7 +211,7 @@ class _TrendsPageState extends State<TrendsPage> {
             const SizedBox(height: 20),
             LoggingStreakCard(mealsData: _mealsData, moodsData: _moodsData),
             const SizedBox(height: 20),
-            const IngredientSearchSection(),
+            IngredientSearchSection(allRecipes: _recipes),
           ],
         ),
       ),
@@ -635,40 +636,9 @@ class IngredientImpactSection extends StatelessWidget {
 
 
   // Fake data for ingredient impact based on timeframe
-  List<Map<String, String>> _generateImpactData(String timeframe) {
-    switch (timeframe) {
-      case 'weekly':
-        return [
-          {'ingredient': 'Avocado', 'impact': '👍 85% Good'},
-          {'ingredient': 'Cheese', 'impact': '👎 70% Bad'},
-          {'ingredient': 'Banana', 'impact': '👍 75% Good'},
-          {'ingredient': 'Salmon', 'impact': '👍 90% Good'},
-          {'ingredient': 'Sugar', 'impact': '👎 80% Bad'},
-          {'ingredient': 'Berries', 'impact': '👍 88% Good'},
-        ];
-      case 'monthly':
-        return [
-          {'ingredient': 'Broccoli', 'impact': '👍 80% Good'},
-          {'ingredient': 'Rice', 'impact': '👍 70% Good'},
-          {'ingredient': 'Chicken Breast', 'impact': '👍 95% Good'},
-          {'ingredient': 'Sugar', 'impact': '👎 85% Bad'},
-        ];
-      case 'quarterly':
-        return [
-          {'ingredient': 'Salmon', 'impact': '👍 92% Good'},
-          {'ingredient': 'Berries', 'impact': '👍 90% Good'},
-          {'ingredient': 'Cheese', 'impact': '👎 75% Bad'},
-        ];
-      case 'yearly':
-        return [
-          {'ingredient': 'Avocado', 'impact': '👍 88% Good'},
-          {'ingredient': 'Salmon', 'impact': '👍 93% Good'},
-          {'ingredient': 'Sugar', 'impact': '👎 78% Bad'},
-        ];
-      default:
-        return [];
-    }
-  }
+  // List<Map<String, String>> _generateImpactData(String timeframe) {
+  //   // ... removed ...
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -768,32 +738,9 @@ class WeeklyStatsSection extends StatelessWidget {
 
 
   // Fake data for weekly stats based on timeframe
-  Map<String, String> _generateStatsData(String timeframe) {
-    switch (timeframe) {
-      case 'weekly':
-        return {
-          'Average Mood': '6.2/10',
-          'Most Logged Ingredient': 'Water (56 times)',
-        };
-      case 'monthly':
-        return {
-          'Average Mood': '6.5/10',
-          'Most Logged Ingredient': 'Water (210 times)',
-        };
-      case 'quarterly':
-        return {
-          'Average Mood': '6.8/10',
-          'Most Logged Ingredient': 'Water (600 times)',
-        };
-      case 'yearly':
-        return {
-          'Average Mood': '7.0/10',
-          'Most Logged Ingredient': 'Water (2200 times)',
-        };
-      default:
-        return {};
-    }
-  }
+  // Map<String, String> _generateStatsData(String timeframe) {
+  //  // ... removed ...
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -828,7 +775,7 @@ class WeeklyStatsSection extends StatelessWidget {
       ],
     );
   }
-import 'dart:math'; // For max function
+// import 'dart:math'; // For max function - Ensure this line is removed or commented out if it exists here
 
 class IngredientDiversityGraph extends StatefulWidget {
   final String timeframe;
@@ -931,14 +878,14 @@ class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
       shape: RoundedRectangleBorder(
           borderRadius:
               BorderRadius.circular(12)), // Consistent rounded corners
-      color: Color.fromARGB(255, 9, 37, 29),
+      color: const Color.fromARGB(255, 9, 37, 29), // Added const
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Ingredient Variety Over Time (${timeframe[0].toUpperCase()}${timeframe.substring(1)})',
+              'Ingredient Variety Over Time (${widget.timeframe[0].toUpperCase()}${widget.timeframe.substring(1)})', // Use widget.timeframe
               style: Theme.of(context)
                   .textTheme
                   .labelMedium, // Consistent title style
@@ -961,15 +908,14 @@ class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 20,
-                        interval: intervalX,
+                        interval: _chartData!.intervalX,
                         getTitlesWidget: (value, meta) {
-                          final titles = _getBottomTitles(timeframe, value);
-                          if (titles.isNotEmpty) {
+                          final title = _chartData!.bottomTitles[value.toInt()];
+                          if (title != null) {
                             return SideTitleWidget(
-                              meta: meta,
-                              child: Text(titles.first,
-                                  style: Theme.of(context).textTheme.bodySmall),
-                            );
+                                axisSide: meta.axisSide,
+                                space: 4.0, // Or your preferred spacing
+                                child: Text(title, style: Theme.of(context).textTheme.bodySmall));
                           }
                           return const SizedBox.shrink();
                         },
@@ -990,12 +936,12 @@ class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
                     ),
                   ),
                   minX: 0,
-                  maxX: maxX,
+                  maxX: _chartData!.maxX, // Use from ProcessedChartData
                   minY: 0,
                   maxY: maxY,
                   lineBarsData: [
                     LineChartBarData(
-                      spots: diversitySpots,
+                      spots: _chartData!.spots, // Use from ProcessedChartData
                       isCurved: true,
                       gradient: LinearGradient(
                         colors: [Colors.green.shade200, Colors.green.shade800],
