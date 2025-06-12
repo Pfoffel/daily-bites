@@ -26,14 +26,15 @@ class _TrendsPageState extends State<TrendsPage> {
   String _uid = '';
 
   // Store the actual start and end dates used for fetching
-  DateTime _currentViewStartDate = DateTime.now().subtract(const Duration(days: 6)); // Default to weekly
+  DateTime _currentViewStartDate =
+      DateTime.now().subtract(const Duration(days: 6)); // Default to weekly
   DateTime _currentViewEndDate = DateTime.now();
-
 
   @override
   void initState() {
     super.initState();
     _uid = FirebaseAuth.instance.currentUser!.uid;
+
     _fetchData();
   }
 
@@ -44,43 +45,52 @@ class _TrendsPageState extends State<TrendsPage> {
     });
     try {
       // Determine date range based on _selectedTimeframe
-      _currentViewEndDate = DateTime.now(); // End date is always today (or time of fetch)
+      _currentViewEndDate =
+          DateTime.now(); // End date is always today (or time of fetch)
 
       switch (_selectedTimeframe) {
         case 'weekly':
           // Data for the last 7 days including today.
-          _currentViewStartDate = _currentViewEndDate.subtract(const Duration(days: 6));
+          _currentViewStartDate =
+              _currentViewEndDate.subtract(const Duration(days: 6));
           break;
         case 'monthly':
           // Data for the last 30 days including today.
-          _currentViewStartDate = _currentViewEndDate.subtract(const Duration(days: 29));
+          _currentViewStartDate =
+              _currentViewEndDate.subtract(const Duration(days: 29));
           break;
         case 'quarterly':
-           // Data for the current quarter.
-          int currentQuarter = ((_currentViewEndDate.month - 1) / 3).floor(); // 0 for Q1, 1 for Q2, etc.
-          _currentViewStartDate = DateTime(_currentViewEndDate.year, currentQuarter * 3 + 1, 1);
+          // Data for the current quarter.
+          int currentQuarter = ((_currentViewEndDate.month - 1) / 3)
+              .floor(); // 0 for Q1, 1 for Q2, etc.
+          _currentViewStartDate =
+              DateTime(_currentViewEndDate.year, currentQuarter * 3 + 1, 1);
           break;
         case 'yearly':
           // Data for the current year.
           _currentViewStartDate = DateTime(_currentViewEndDate.year, 1, 1);
           break;
         default:
-          _currentViewStartDate = _currentViewEndDate.subtract(const Duration(days: 6));
+          _currentViewStartDate =
+              _currentViewEndDate.subtract(const Duration(days: 6));
       }
       // Ensure startDate is not after endDate (edge case, e.g. if app starts on 1st day of month and 'monthly' is selected)
       // Normalizing to midnight for date part only comparison if needed, but _fetchData uses these as is.
       if (_currentViewStartDate.isAfter(_currentViewEndDate)) {
-         _currentViewStartDate = DateTime(_currentViewEndDate.year, _currentViewEndDate.month, _currentViewEndDate.day);
+        _currentViewStartDate = DateTime(_currentViewEndDate.year,
+            _currentViewEndDate.month, _currentViewEndDate.day);
       }
 
+      print("Here: $_uid");
 
-      _mealsData = await _dbService.getMealsForDateRange(_uid, _currentViewStartDate, _currentViewEndDate);
-      _moodsData = await _dbService.getMoodsForDateRange(_uid, _currentViewStartDate, _currentViewEndDate);
+      _mealsData = await _dbService.getMealsForDateRange(
+          _uid, _currentViewStartDate, _currentViewEndDate);
+      _moodsData = await _dbService.getMoodsForDateRange(
+          _uid, _currentViewStartDate, _currentViewEndDate);
 
-      _dbService.updateUID(_uid, ''); // Pass empty or relevant date
+      // _dbService.updateUID(_uid, ''); // Pass empty or relevant date
       await _dbService.loadRecipes();
       _recipes = _dbService.recipesList;
-
     } catch (e) {
       _errorMessage = "Error fetching data: ${e.toString()}";
       print(_errorMessage);
@@ -91,13 +101,15 @@ class _TrendsPageState extends State<TrendsPage> {
     }
   }
 
-  DateTime _getViewStartDate() { // Helper to access the current start date for chart utils
+  DateTime _getViewStartDate() {
+    // Helper to access the current start date for chart utils
     return _currentViewStartDate;
   }
-  DateTime _getViewEndDate() { // Helper to access the current end date for chart utils
+
+  DateTime _getViewEndDate() {
+    // Helper to access the current end date for chart utils
     return _currentViewEndDate;
   }
-
 
   // Define the consistent dropdown background color, similar to survey_page.dart
   final Color _dropdownBackgroundColor = const Color.fromARGB(255, 9, 37, 29);
@@ -111,7 +123,9 @@ class _TrendsPageState extends State<TrendsPage> {
     }
 
     if (_errorMessage.isNotEmpty) {
-      return Center(child: Text(_errorMessage, style: const TextStyle(color: Colors.red)));
+      return Center(
+          child:
+              Text(_errorMessage, style: const TextStyle(color: Colors.red)));
     }
     return Scaffold(
       appBar: AppBar(
@@ -198,9 +212,17 @@ class _TrendsPageState extends State<TrendsPage> {
               viewEndDate: _getViewEndDate(),
             ),
             const SizedBox(height: 20),
-            IngredientImpactSection(timeframe: _selectedTimeframe, mealsData: _mealsData, moodsData: _moodsData, recipes: _recipes),
+            IngredientImpactSection(
+                timeframe: _selectedTimeframe,
+                mealsData: _mealsData,
+                moodsData: _moodsData,
+                recipes: _recipes),
             const SizedBox(height: 20),
-            WeeklyStatsSection(timeframe: _selectedTimeframe, mealsData: _mealsData, moodsData: _moodsData, recipesList: _recipes),
+            WeeklyStatsSection(
+                timeframe: _selectedTimeframe,
+                mealsData: _mealsData,
+                moodsData: _moodsData,
+                recipesList: _recipes),
             const SizedBox(height: 20),
             IngredientDiversityGraph(
               timeframe: _selectedTimeframe,
@@ -220,7 +242,8 @@ class _TrendsPageState extends State<TrendsPage> {
 }
 
 class SummaryInsightCard extends StatelessWidget {
-  const SummaryInsightCard({super.key, required this.mealsData, required this.moodsData});
+  const SummaryInsightCard(
+      {super.key, required this.mealsData, required this.moodsData});
   final List<Map<String, dynamic>> mealsData;
   final List<Map<String, dynamic>> moodsData;
 
@@ -242,7 +265,8 @@ class SummaryInsightCard extends StatelessWidget {
         }
       }
       if (moodCount > 0) {
-        moodInsight = "Average mood score: ${(totalScore / moodCount).toStringAsFixed(1)}/10.";
+        moodInsight =
+            "Average mood score: ${(totalScore / moodCount).toStringAsFixed(1)}/10.";
       } else {
         moodInsight = "Mood data found, but no scores recorded.";
       }
@@ -255,7 +279,8 @@ class SummaryInsightCard extends StatelessWidget {
       for (var mealDay in mealsData) {
         if (mealDay['meals'] != null) {
           for (var mealTime in mealDay['meals']) {
-            if (mealTime['recipes'] != null && (mealTime['recipes'] as List).isNotEmpty) {
+            if (mealTime['recipes'] != null &&
+                (mealTime['recipes'] as List).isNotEmpty) {
               mealLogCount++;
             }
           }
@@ -343,7 +368,7 @@ class _MoodTrendChartState extends State<MoodTrendChart> {
     // This ensures TrendChartUtils is callable.
     // In a real scenario, might show loading or use placeholder until TrendChartUtils is fully integrated.
     setState(() {
-       // Temporarily setting to null or a default. Full integration in next step.
+      // Temporarily setting to null or a default. Full integration in next step.
       _chartData = TrendChartUtils.processDataForChart(
         timeframe: widget.timeframe,
         dailyEntries: widget.moodsData,
@@ -354,7 +379,8 @@ class _MoodTrendChartState extends State<MoodTrendChart> {
     });
   }
 
-  double _aggregateMoodScores(List<Map<String, dynamic>> dailyMoodEntriesForPeriod) {
+  double _aggregateMoodScores(
+      List<Map<String, dynamic>> dailyMoodEntriesForPeriod) {
     if (dailyMoodEntriesForPeriod.isEmpty) return 0;
     double periodTotalScore = 0;
     int daysWithMoodsInPeriod = 0;
@@ -374,7 +400,9 @@ class _MoodTrendChartState extends State<MoodTrendChart> {
         daysWithMoodsInPeriod++;
       }
     }
-    return daysWithMoodsInPeriod > 0 ? periodTotalScore / daysWithMoodsInPeriod : 0;
+    return daysWithMoodsInPeriod > 0
+        ? periodTotalScore / daysWithMoodsInPeriod
+        : 0;
   }
 
   @override
@@ -397,7 +425,10 @@ class _MoodTrendChartState extends State<MoodTrendChart> {
               const SizedBox(height: 16),
               SizedBox(
                 height: 200,
-                child: Center(child: Text('No mood data for this period or data is processing.', style: TextStyle(color: Colors.white70))),
+                child: Center(
+                    child: Text(
+                        'No mood data for this period or data is processing.',
+                        style: TextStyle(color: Colors.white70))),
               ),
             ],
           ),
@@ -441,14 +472,17 @@ class _MoodTrendChartState extends State<MoodTrendChart> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         reservedSize: 20,
-                        interval: _chartData!.intervalX, // Use from ProcessedChartData
+                        interval: _chartData!
+                            .intervalX, // Use from ProcessedChartData
                         getTitlesWidget: (value, meta) {
                           final title = _chartData!.bottomTitles[value.toInt()];
                           if (title != null) {
                             return SideTitleWidget(
-                                axisSide: meta.axisSide,
+                                meta: meta,
                                 space: 4.0,
-                                child: Text(title, style: Theme.of(context).textTheme.bodySmall));
+                                child: Text(title,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall));
                           }
                           return const SizedBox.shrink();
                         },
@@ -583,8 +617,7 @@ class IngredientImpactSection extends StatelessWidget {
   }
 
   List<Map<String, String>> _getImpactDisplayData(
-      Map<String, List<double>> ingredientMoodScores,
-      List<Recipe> allRecipes) {
+      Map<String, List<double>> ingredientMoodScores, List<Recipe> allRecipes) {
     if (ingredientMoodScores.isEmpty) return [];
     List<Map<String, dynamic>> processedIngredients = [];
 
@@ -592,7 +625,8 @@ class IngredientImpactSection extends StatelessWidget {
       if (scores.isNotEmpty) {
         double averageScore = scores.reduce((a, b) => a + b) / scores.length;
         // Find recipe by ID. Note: Recipe ID in Firebase might be String.
-        Recipe? recipe = allRecipes.firstWhere((r) => r.id.toString() == recipeId, orElse: () => null);
+        Recipe? recipe =
+            allRecipes.firstWhere((r) => r.id.toString() == recipeId);
         if (recipe != null) {
           processedIngredients.add({
             'name': recipe.title,
@@ -612,7 +646,8 @@ class IngredientImpactSection extends StatelessWidget {
     // Top positive impacts
     for (int i = 0; i < processedIngredients.length && i < displayCount; i++) {
       var item = processedIngredients[i];
-      String impactString = "👍 ${item['avgScore'].toStringAsFixed(1)}/10 (${item['logCount']} logs)";
+      String impactString =
+          "👍 ${item['avgScore'].toStringAsFixed(1)}/10 (${item['logCount']} logs)";
       displayData.add({'ingredient': item['name'], 'impact': impactString});
     }
 
@@ -620,20 +655,23 @@ class IngredientImpactSection extends StatelessWidget {
     // Sorting again for lowest scores
     processedIngredients.sort((a, b) => a['avgScore'].compareTo(b['avgScore']));
     int negativeDisplayCount = 3;
-     for (int i = 0; i < processedIngredients.length && i < negativeDisplayCount; i++) {
+    for (int i = 0;
+        i < processedIngredients.length && i < negativeDisplayCount;
+        i++) {
       var item = processedIngredients[i];
       // Ensure not already added as a positive impact if lists overlap significantly
-      if (displayData.where((d) => d['ingredient'] == item['name']).isEmpty && item['avgScore'] < 5.0) { // Example threshold for "negative"
-        String impactString = "👎 ${item['avgScore'].toStringAsFixed(1)}/10 (${item['logCount']} logs)";
+      if (displayData.where((d) => d['ingredient'] == item['name']).isEmpty &&
+          item['avgScore'] < 5.0) {
+        // Example threshold for "negative"
+        String impactString =
+            "👎 ${item['avgScore'].toStringAsFixed(1)}/10 (${item['logCount']} logs)";
         displayData.add({'ingredient': item['name'], 'impact': impactString});
       }
       if (displayData.length >= displayCount + negativeDisplayCount) break;
     }
 
-
     return displayData;
   }
-
 
   // Fake data for ingredient impact based on timeframe
   // List<Map<String, String>> _generateImpactData(String timeframe) {
@@ -642,7 +680,8 @@ class IngredientImpactSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ingredientMoodScores = _calculateIngredientMoodScores(mealsData, moodsData);
+    final ingredientMoodScores =
+        _calculateIngredientMoodScores(mealsData, moodsData);
     final impactData = _getImpactDisplayData(ingredientMoodScores, recipes);
 
     return Column(
@@ -703,10 +742,13 @@ class WeeklyStatsSection extends StatelessWidget {
         daysWithMoods++;
       }
     }
-    return daysWithMoods > 0 ? '${(totalDailyAverageScore / daysWithMoods).toStringAsFixed(1)}/10' : 'N/A';
+    return daysWithMoods > 0
+        ? '${(totalDailyAverageScore / daysWithMoods).toStringAsFixed(1)}/10'
+        : 'N/A';
   }
 
-  String _calculateMostLoggedIngredient(List<Map<String, dynamic>> mealsData, List<Recipe> recipesList) {
+  String _calculateMostLoggedIngredient(
+      List<Map<String, dynamic>> mealsData, List<Recipe> recipesList) {
     if (mealsData.isEmpty || recipesList.isEmpty) return 'N/A';
     Map<String, int> ingredientCounts = {};
     for (var mealDay in mealsData) {
@@ -732,10 +774,10 @@ class WeeklyStatsSection extends StatelessWidget {
       }
     });
     if (mostLoggedId == null) return 'N/A';
-    Recipe? recipe = recipesList.firstWhere((r) => r.id.toString() == mostLoggedId, orElse: () => null);
+    Recipe? recipe =
+        recipesList.firstWhere((r) => r.id.toString() == mostLoggedId);
     return recipe != null ? '${recipe.title} ($maxCount times)' : 'N/A';
   }
-
 
   // Fake data for weekly stats based on timeframe
   // Map<String, String> _generateStatsData(String timeframe) {
@@ -745,8 +787,12 @@ class WeeklyStatsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String avgMood = _calculateAverageMood(moodsData);
-    final String mostLogged = _calculateMostLoggedIngredient(mealsData, recipesList);
-    final statsData = {'Average Mood': avgMood, 'Most Logged Ingredient': mostLogged};
+    final String mostLogged =
+        _calculateMostLoggedIngredient(mealsData, recipesList);
+    final statsData = {
+      'Average Mood': avgMood,
+      'Most Logged Ingredient': mostLogged
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -775,6 +821,7 @@ class WeeklyStatsSection extends StatelessWidget {
       ],
     );
   }
+}
 // import 'dart:math'; // For max function - Ensure this line is removed or commented out if it exists here
 
 class IngredientDiversityGraph extends StatefulWidget {
@@ -792,7 +839,8 @@ class IngredientDiversityGraph extends StatefulWidget {
   });
 
   @override
-  State<IngredientDiversityGraph> createState() => _IngredientDiversityGraphState();
+  State<IngredientDiversityGraph> createState() =>
+      _IngredientDiversityGraphState();
 }
 
 class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
@@ -827,14 +875,15 @@ class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
     });
   }
 
-  double _aggregateRecipeDiversity(List<Map<String, dynamic>> dailyMealEntriesForPeriod) {
+  double _aggregateRecipeDiversity(
+      List<Map<String, dynamic>> dailyMealEntriesForPeriod) {
     if (dailyMealEntriesForPeriod.isEmpty) return 0;
     Set<String> uniqueRecipeIdsInPeriod = {};
     for (var dayEntry in dailyMealEntriesForPeriod) {
-       if (dayEntry['meals'] == null) continue;
+      if (dayEntry['meals'] == null) continue;
       List dailyMeals = dayEntry['meals'];
       for (var meal in dailyMeals) {
-         if (meal['recipes'] == null) continue;
+        if (meal['recipes'] == null) continue;
         List recipeIds = meal['recipes'];
         for (var id in recipeIds) {
           uniqueRecipeIdsInPeriod.add(id.toString());
@@ -847,7 +896,7 @@ class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
   @override
   Widget build(BuildContext context) {
     if (_chartData == null || _chartData!.spots.isEmpty) {
-       return Card(
+      return Card(
         elevation: 3,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: const Color.fromARGB(255, 9, 37, 29),
@@ -863,7 +912,9 @@ class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
               const SizedBox(height: 16),
               const SizedBox(
                 height: 200,
-                child: Center(child: Text('No meal data for this period.', style: TextStyle(color: Colors.white70))),
+                child: Center(
+                    child: Text('No meal data for this period.',
+                        style: TextStyle(color: Colors.white70))),
               ),
             ],
           ),
@@ -871,7 +922,9 @@ class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
       );
     }
 
-    final double maxY = _chartData!.spots.isNotEmpty ? _chartData!.spots.map((s) => s.y).reduce(max) + 2 : 20; // Add padding
+    final double maxY = _chartData!.spots.isNotEmpty
+        ? _chartData!.spots.map((s) => s.y).reduce(max) + 2
+        : 20; // Add padding
 
     return Card(
       elevation: 3,
@@ -913,9 +966,11 @@ class _IngredientDiversityGraphState extends State<IngredientDiversityGraph> {
                           final title = _chartData!.bottomTitles[value.toInt()];
                           if (title != null) {
                             return SideTitleWidget(
-                                axisSide: meta.axisSide,
+                                meta: meta,
                                 space: 4.0, // Or your preferred spacing
-                                child: Text(title, style: Theme.of(context).textTheme.bodySmall));
+                                child: Text(title,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall));
                           }
                           return const SizedBox.shrink();
                         },
@@ -974,9 +1029,11 @@ class LoggingStreakCard extends StatelessWidget {
   final List<Map<String, dynamic>> mealsData;
   final List<Map<String, dynamic>> moodsData;
 
-  const LoggingStreakCard({super.key, required this.mealsData, required this.moodsData});
+  const LoggingStreakCard(
+      {super.key, required this.mealsData, required this.moodsData});
 
-  int _calculateLoggingStreak(List<Map<String, dynamic>> mealsData, List<Map<String, dynamic>> moodsData) {
+  int _calculateLoggingStreak(List<Map<String, dynamic>> mealsData,
+      List<Map<String, dynamic>> moodsData) {
     Set<String> loggedDatesStr = {};
     for (var mealDay in mealsData) {
       if (mealDay['date'] != null) loggedDatesStr.add(mealDay['date']);
@@ -987,7 +1044,8 @@ class LoggingStreakCard extends StatelessWidget {
 
     if (loggedDatesStr.isEmpty) return 0;
 
-    List<DateTime> sortedDates = loggedDatesStr.map((dateStr) => DateTime.parse(dateStr)).toList();
+    List<DateTime> sortedDates =
+        loggedDatesStr.map((dateStr) => DateTime.parse(dateStr)).toList();
     sortedDates.sort((a, b) => b.compareTo(a)); // Sort descending
 
     // Check if today is logged. If not, streak is 0 unless yesterday was the last log.
@@ -996,11 +1054,13 @@ class LoggingStreakCard extends StatelessWidget {
 
     // Find the most recent log date
     DateTime mostRecentLogDate = sortedDates.first;
-    mostRecentLogDate = DateTime(mostRecentLogDate.year, mostRecentLogDate.month, mostRecentLogDate.day);
+    mostRecentLogDate = DateTime(
+        mostRecentLogDate.year, mostRecentLogDate.month, mostRecentLogDate.day);
 
     // If the most recent log isn't today or yesterday, the current streak is 0.
     if (!mostRecentLogDate.isAtSameMomentAs(todayDateOnly) &&
-        !mostRecentLogDate.isAtSameMomentAs(todayDateOnly.subtract(const Duration(days: 1)))) {
+        !mostRecentLogDate.isAtSameMomentAs(
+            todayDateOnly.subtract(const Duration(days: 1)))) {
       return 0;
     }
 
@@ -1008,7 +1068,8 @@ class LoggingStreakCard extends StatelessWidget {
     DateTime expectedDate = todayDateOnly;
 
     // If the most recent log is yesterday, start checking from yesterday
-    if (mostRecentLogDate.isAtSameMomentAs(todayDateOnly.subtract(const Duration(days: 1)))){
+    if (mostRecentLogDate
+        .isAtSameMomentAs(todayDateOnly.subtract(const Duration(days: 1)))) {
       expectedDate = mostRecentLogDate;
     }
 
@@ -1033,7 +1094,8 @@ class LoggingStreakCard extends StatelessWidget {
     if (streak == 0) {
       streakMessage = 'Start logging today to build your streak!';
     } else if (streak == 1) {
-      streakMessage = '🎉 $streak-day streak! Log again tomorrow to keep it going!';
+      streakMessage =
+          '🎉 $streak-day streak! Log again tomorrow to keep it going!';
     }
 
     return Center(
@@ -1077,7 +1139,8 @@ class IngredientSearchSection extends StatefulWidget {
   const IngredientSearchSection({super.key, required this.allRecipes});
 
   @override
-  State<IngredientSearchSection> createState() => _IngredientSearchSectionState();
+  State<IngredientSearchSection> createState() =>
+      _IngredientSearchSectionState();
 }
 
 class _IngredientSearchSectionState extends State<IngredientSearchSection> {
@@ -1148,7 +1211,8 @@ class _IngredientSearchSectionState extends State<IngredientSearchSection> {
         else if (_searchResults.isNotEmpty)
           ListView.builder(
             shrinkWrap: true, // Important for ListView inside Column
-            physics: const NeverScrollableScrollPhysics(), // If Column is scrollable
+            physics:
+                const NeverScrollableScrollPhysics(), // If Column is scrollable
             itemCount: _searchResults.length,
             itemBuilder: (context, index) {
               final recipe = _searchResults[index];
@@ -1162,8 +1226,9 @@ class _IngredientSearchSectionState extends State<IngredientSearchSection> {
               );
             },
           )
-        else if (_searchController.text.isEmpty) // Optional: Show initial message or popular items
-            Padding(
+        else if (_searchController
+            .text.isEmpty) // Optional: Show initial message or popular items
+          Padding(
             padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: Text(
               'Enter a search term to find ingredients.',

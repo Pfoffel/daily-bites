@@ -61,14 +61,14 @@ class ConnectDb extends ChangeNotifier {
 
   final Map<String, List<Map<String, dynamic>>> _defaultRecipes = {
     'recipes': [
-      {
-        'id': "0", // Changed 0 to "0"
-        'title': 'Apple',
-        'imgUrl': "https://img.spoonacular.com/ingredients_100x100/apple.jpg",
-        'type': 'jpg',
-        'nutrients': [],
-        'category': 'Product'
-      }
+      // {
+      //   'id': "0", // Changed 0 to "0"
+      //   'title': 'Apple',
+      //   'imgUrl': "https://img.spoonacular.com/ingredients_100x100/apple.jpg",
+      //   'type': 'jpg',
+      //   'nutrients': [],
+      //   'category': 'Product'
+      // }
     ],
   };
 

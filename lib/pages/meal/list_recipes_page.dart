@@ -182,12 +182,13 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
   Future<void> listYesterday(
       ConnectDb db, CurrentDate date, BuildContext context) async {
     final String yesterdayDate = date.getDate(-1);
-    final userData = db.mealsCollection
+    print(yesterdayDate);
+    final userData = await db.mealsCollection
         .doc(db.uid)
         .collection('daily_entries')
-        .doc(yesterdayDate) as Map<String, dynamic>;
-
-    if (userData.isEmpty) {
+        .doc(yesterdayDate)
+        .get();
+    if (!userData.exists) {
       if (context.mounted) {
         showMySnackBar(context, 'No records for yesterday', 'Dismiss', () {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -196,7 +197,7 @@ class _ListRecipesPageState extends State<ListRecipesPage> {
       return;
     }
 
-    final List yesterdayMeals = userData["meals"];
+    final List yesterdayMeals = userData.data()!["meals"];
     final List yesterdayTitles = [];
     final List yesterdayRecipes = [];
 
