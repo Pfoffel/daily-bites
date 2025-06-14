@@ -30,8 +30,9 @@ class SettingsPage extends StatelessWidget {
                 MySettingsTile(
                     title: 'Personaize Experience',
                     trailing: ElevatedButton(
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/survey_page'),
+                        onPressed: () => Navigator.pushNamed(
+                            context, '/survey_page',
+                            arguments: {'source': 'settings'}),
                         child: Text(
                           'Update',
                           style: Theme.of(context).textTheme.labelSmall,

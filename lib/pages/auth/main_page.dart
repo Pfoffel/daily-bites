@@ -13,8 +13,8 @@ import 'package:provider/provider.dart';
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
 
-  Future<void> _initializeData(
-      ConnectDb db, RecipeList rl, Mood m, UserSettings settings) async {
+  Future<bool> _initializeData(BuildContext context, ConnectDb db,
+      RecipeList rl, Mood m, UserSettings settings) async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -101,6 +101,21 @@ class MainPage extends StatelessWidget {
     rl.initializeRecipes(db.recipesList, mealsDay);
     m.initializeMood(moodsDay, currentDate);
     settings.initializeSettings(db.timeMap, db.goalsMap);
+
+    // Check survey completion status after settings are loaded and initialized
+    // db.goalsMap is populated by db.loadSettings() which is called above.
+    final surveyCompleted = db.goalsMap['surveyCompleted'];
+
+    if (surveyCompleted == false || surveyCompleted == null) {
+      // Ensure context is still valid before navigating if there were async gaps
+      // However, in this specific flow, _initializeData is awaited by FutureBuilder,
+      // and navigation happens before FutureBuilder rebuilds with HomePage.
+      // So, a direct check of mounted on a StatelessWidget's context might not be what we want.
+      // The navigation should be safe here as it's part of the future's execution.
+      Navigator.of(context).pushReplacementNamed('/survey_page');
+      return true; // Indicated navigation to survey page occurred
+    }
+    return false; // Survey already completed, no navigation to survey page
   }
 
   @override
@@ -122,11 +137,11 @@ class MainPage extends StatelessWidget {
             final Mood mood = context.read<Mood>();
             final UserSettings settings = context.read<UserSettings>();
 
-            return FutureBuilder(
-              future: _initializeData(db, recipeList, mood, settings),
+            return FutureBuilder<bool>(
+              future: _initializeData(context, db, recipeList, mood, settings),
               builder: (context, futureSnapshot) {
                 if (futureSnapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
+                  return const Center(
                     child: CircularProgressIndicator(
                       color: Color.fromARGB(255, 45, 190, 120),
                     ),
@@ -139,11 +154,20 @@ class MainPage extends StatelessWidget {
                           "Error loading data: ${futureSnapshot.error.toString()}"));
                 }
 
-                return HomePage();
+                final bool didNavigateToSurvey = futureSnapshot.data ?? false;
+
+                if (didNavigateToSurvey) {
+                  // Navigation to survey page was handled, show an empty container or placeholder
+                  // until the survey page takes over.
+                  return Container(); // Or SizedBox.shrink();
+                } else {
+                  // Survey was completed or not needed, proceed to HomePage
+                  return HomePage();
+                }
               },
             );
           } else {
-            return AuthPage();
+            return const AuthPage();
           }
         },
       ),

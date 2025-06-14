@@ -277,9 +277,34 @@ class ConnectDb extends ChangeNotifier {
     final Map<String, dynamic> settings = {
       'schedules': _defaultTimes,
       'goals': _defaultGoals,
+      'surveyCompleted': false, // surveyCompleted is now part of the settings map
     };
 
+    // The entire settings map is set as the value for the 'settings' field
     await userSettings.set({'settings': settings});
+  }
+
+  Future<void> saveSurveyData(
+      String userId, Map<String, dynamic> surveyData) async {
+    try {
+      // Save survey data to a specific document in a subcollection
+      await _settings
+          .doc(userId)
+          .collection('user_surveys')
+          .doc('initial_survey')
+          .set(surveyData, SetOptions(merge: true));
+
+      // Update the main settings document with surveyCompleted: true
+      await _settings
+          .doc(userId)
+          .set({'settings': {'surveyCompleted': true}}, SetOptions(merge: true));
+
+      print('Survey data saved successfully for user $userId');
+      notifyListeners(); // Notify listeners on success
+    } catch (e) {
+      print('Error saving survey data for user $userId: $e');
+      rethrow; // Rethrow the error to be handled by the caller
+    }
   }
 
   Future<void> initializeRecipes(String newUid) async {

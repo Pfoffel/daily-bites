@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:health_app_v1/service/connect_db.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart'; // For context.read
 
 class SurveyPage extends StatefulWidget {
   const SurveyPage({super.key});
@@ -112,11 +115,12 @@ class SurveyPageState extends State<SurveyPage> {
     });
   }
 
-  void _submitSurvey() {
+  Future<void> _submitSurvey() async {
     // *** Final validation for the last page is triggered here ***
     if (_formKeys[_currentPage].currentState!.validate()) {
       // Additional validation for non-TextFormField widgets if needed
       if (!_consentGiven) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please give consent to submit.')),
         );
@@ -148,11 +152,53 @@ class SurveyPageState extends State<SurveyPage> {
       _surveyAnswers['foodMoodConnection'] = _foodMoodConnectionController.text;
       _surveyAnswers['consentGiven'] = _consentGiven;
 
-      // Process or save the answers (e.g., print to console for now)
+      // Process or save the answers
       print(_surveyAnswers);
 
-      // Navigate to the next screen or show a success message
-      // Navigator.pushReplacementNamed(context, '/home'); // Example navigation
+      final String userId = FirebaseAuth.instance.currentUser!.uid;
+      final connectDb = context.read<ConnectDb>();
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+
+      try {
+        await connectDb.saveSurveyData(userId, _surveyAnswers);
+
+        if (!mounted) return; // Check mounted before dismissing dialog or showing snackbar
+        Navigator.of(context).pop(); // Dismiss loading indicator
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Survey submitted successfully!')),
+        );
+
+        final Object? args = ModalRoute.of(context)?.settings.arguments;
+        bool fromSettings = false;
+        if (args != null && args is Map && args['source'] == 'settings') {
+          fromSettings = true;
+        }
+
+        if (fromSettings) {
+          if (mounted) Navigator.of(context).pop(); // Pop survey page to return to settings
+        } else {
+          // Existing navigation for new users
+          if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/home_page', (route) => false);
+        }
+
+      } catch (e) {
+        if (!mounted) return; // Check mounted before dismissing dialog or showing snackbar
+        Navigator.of(context).pop(); // Dismiss loading indicator
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error submitting survey: $e')),
+        );
+        print('Error submitting survey: $e');
+      }
     }
   }
 
