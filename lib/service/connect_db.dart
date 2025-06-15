@@ -307,6 +307,26 @@ class ConnectDb extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>?> getSurveyData(String userId) async {
+    try {
+      final DocumentReference docRef = _settings
+          .doc(userId)
+          .collection('user_surveys')
+          .doc('initial_survey');
+      final DocumentSnapshot doc = await docRef.get();
+
+      if (doc.exists && doc.data() != null) {
+        return doc.data() as Map<String, dynamic>;
+      } else {
+        print('Survey document not found for user $userId');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching survey data for user $userId: $e');
+      return null;
+    }
+  }
+
   Future<void> initializeRecipes(String newUid) async {
     final DocumentReference userRecipes = _recipes.doc(newUid);
 

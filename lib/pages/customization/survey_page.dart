@@ -39,6 +39,11 @@ class SurveyPageState extends State<SurveyPage> {
       TextEditingController();
   final TextEditingController _healthConditionsController =
       TextEditingController();
+  final TextEditingController _otherAllergyController = TextEditingController();
+
+  // Loading state
+  bool _isLoadingData = true;
+  // Map<String, dynamic>? _loadedSurveyData; // Optional: Can set controllers directly
 
   // Selected values for dropdowns/radio buttons/checkboxes
   String? _selectedSex;
@@ -65,6 +70,106 @@ class SurveyPageState extends State<SurveyPage> {
     super.initState();
     // Initialize progress on load
     _updateProgress(_currentPage);
+    _loadSurveyData(); // Load existing survey data
+  }
+
+  Future<void> _loadSurveyData() async {
+    final String? userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      if (mounted) {
+        setState(() {
+          _isLoadingData = false;
+        });
+      }
+      return;
+    }
+
+    final connectDb = context.read<ConnectDb>();
+    final Map<String, dynamic>? data = await connectDb.getSurveyData(userId);
+
+    if (data != null && mounted) {
+      setState(() {
+        _ageController.text = data['age']?.toString() ?? '';
+        _selectedSex = data['sex'] as String?;
+        _heightController.text = data['height']?.toString() ?? '';
+        _weightController.text = data['weight']?.toString() ?? '';
+        _selectedActivityLevel = data['activityLevel'] as String?;
+        _sleepHoursController.text = data['sleepHours']?.toString() ?? '';
+        _selectedDietType = data['dietType'] as String?;
+
+        // Load Allergies
+        final List<String> tempAllergies = List<String>.from(data['allergies'] as List? ?? []);
+        _selectedAllergies.clear();
+        final List<String> predefinedAllergies = ['Gluten', 'Dairy', 'Nuts', 'Soy'];
+        for (String allergy in tempAllergies) {
+          if (predefinedAllergies.contains(allergy)) {
+            _selectedAllergies.add(allergy);
+          } else {
+            _selectedAllergies.add('Other'); // Add 'Other' to the selection
+            _otherAllergyController.text = allergy; // Set the text for the 'Other' field
+          }
+        }
+
+        _dislikedFoodsController.text = data['dislikedFoods']?.toString() ?? '';
+        _healthConditionsController.text = data['healthConditions']?.toString() ?? '';
+
+        // Load Goal
+        final String? goalData = data['goal'] as String?;
+        final List<String> predefinedGoals = [
+          'Improve digestion',
+          'Increase energy',
+          'Sleep better',
+          'Lose/gain/maintain weight',
+          'Understand food-mood link'
+        ];
+        if (goalData != null) {
+          if (predefinedGoals.contains(goalData)) {
+            _selectedGoal = goalData;
+          } else {
+            _selectedGoal = 'Other';
+            _otherGoalController.text = goalData;
+          }
+        }
+
+        // Load Challenges
+        final List<dynamic> challengesData = data['challenges'] as List<dynamic>? ?? [];
+        _selectedChallenges.clear();
+        final List<String> predefinedChallenges = [
+          'Bloating',
+          'Headaches',
+          'Fatigue',
+          'Skin issues',
+          'Mood swings',
+          'Cravings',
+          'Poor sleep'
+        ];
+        for (var challengeItem in challengesData) {
+          final String challenge = challengeItem.toString();
+          if (predefinedChallenges.contains(challenge)) {
+            _selectedChallenges.add(challenge);
+          } else {
+             // If it's not a predefined one, it's the 'Other' text
+            _selectedChallenges.add('Other');
+            _otherChallengeController.text = challenge;
+          }
+        }
+
+        _morningMood = (data['morningMood'] as num?)?.toInt() ?? 3;
+        _afternoonMood = (data['afternoonMood'] as num?)?.toInt() ?? 3;
+        _eveningMood = (data['eveningMood'] as num?)?.toInt() ?? 3;
+        _foodMoodConnectionController.text = data['foodMoodConnection']?.toString() ?? '';
+        _consentGiven = data['consentGiven'] as bool? ?? false;
+
+        // Potentially update progress if on the last page and consent is given
+        // or if navigation depends on loaded data, but _updateProgress is tied to page index.
+      });
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingData = false;
+      });
+    }
   }
 
   @override
@@ -78,6 +183,7 @@ class SurveyPageState extends State<SurveyPage> {
     _foodMoodConnectionController.dispose();
     _dislikedFoodsController.dispose();
     _healthConditionsController.dispose();
+    _otherAllergyController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -135,7 +241,18 @@ class SurveyPageState extends State<SurveyPage> {
       _surveyAnswers['activityLevel'] = _selectedActivityLevel;
       _surveyAnswers['sleepHours'] = _sleepHoursController.text;
       _surveyAnswers['dietType'] = _selectedDietType;
-      _surveyAnswers['allergies'] = _selectedAllergies;
+
+      // Allergies processing
+      List<String> allergiesToSave = List.from(_selectedAllergies);
+      if (_selectedAllergies.contains('Other')) {
+        if (_otherAllergyController.text.isNotEmpty) {
+          allergiesToSave.remove('Other'); // Remove placeholder
+          allergiesToSave.add(_otherAllergyController.text); // Add actual text
+        }
+        // If _otherAllergyController.text is empty but 'Other' is checked, 'Other' remains in allergiesToSave
+      }
+      _surveyAnswers['allergies'] = allergiesToSave;
+
       _surveyAnswers['dislikedFoods'] = _dislikedFoodsController.text;
       _surveyAnswers['healthConditions'] = _healthConditionsController.text;
       _surveyAnswers['goal'] =
@@ -509,8 +626,7 @@ class SurveyPageState extends State<SurveyPage> {
               Padding(
                 padding: const EdgeInsets.only(top: 10.0),
                 child: TextFormField(
-                  controller:
-                      _otherChallengeController, // Assuming this controller is used for 'Other' in both allergies and challenges
+                  controller: _otherAllergyController,
                   decoration: InputDecoration(
                     labelText: 'Please specify other allergies',
                     labelStyle: Theme.of(context).textTheme.headlineSmall,
@@ -835,6 +951,15 @@ class SurveyPageState extends State<SurveyPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingData) {
+      return Scaffold(
+        appBar: AppBar(
+            title: Text('Personalize Your Experience',
+                style: Theme.of(context).textTheme.labelMedium)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
           title: Text(
