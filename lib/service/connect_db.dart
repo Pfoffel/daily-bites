@@ -122,6 +122,7 @@ class ConnectDb extends ChangeNotifier {
   List<Recipe> _recipesList = [];
   List _moodList = [];
   Map<String, dynamic> _goalsMap = {};
+  bool _surveyCompleted = false;
 
   String get uid => _uid;
   CollectionReference get mealsCollection => _mealsCollection;
@@ -141,6 +142,7 @@ class ConnectDb extends ChangeNotifier {
   List get defaultMoods => _defaultMoods;
   Map<String, dynamic> get timeMap => _timesMap;
   Map<String, dynamic> get goalsMap => _goalsMap;
+  bool get surveyCompleted => _surveyCompleted;
   List<Recipe> get recipesList => _recipesList;
   List get moodList => _moodList;
 
@@ -277,7 +279,8 @@ class ConnectDb extends ChangeNotifier {
     final Map<String, dynamic> settings = {
       'schedules': _defaultTimes,
       'goals': _defaultGoals,
-      'surveyCompleted': false, // surveyCompleted is now part of the settings map
+      'surveyCompleted':
+          false, // surveyCompleted is now part of the settings map
     };
 
     // The entire settings map is set as the value for the 'settings' field
@@ -295,9 +298,9 @@ class ConnectDb extends ChangeNotifier {
           .set(surveyData, SetOptions(merge: true));
 
       // Update the main settings document with surveyCompleted: true
-      await _settings
-          .doc(userId)
-          .set({'settings': {'surveyCompleted': true}}, SetOptions(merge: true));
+      await _settings.doc(userId).set({
+        'settings': {'surveyCompleted': true}
+      }, SetOptions(merge: true));
 
       print('Survey data saved successfully for user $userId');
       notifyListeners(); // Notify listeners on success
@@ -390,13 +393,16 @@ class ConnectDb extends ChangeNotifier {
     Map<String, dynamic> settings = {};
     Map<String, dynamic> newTimes = {};
     Map<String, dynamic> newGoals = {};
+    bool surveyCompleted = false;
     final Map<String, dynamic> data =
         (userSettings.data()! as Map<String, dynamic>);
     settings = data['settings'];
     newTimes = settings['schedules'];
     newGoals = settings['goals'];
+    surveyCompleted = settings["surveyCompleted"];
     _timesMap = newTimes;
     _goalsMap = newGoals;
+    _surveyCompleted = surveyCompleted;
     notifyListeners();
   }
 

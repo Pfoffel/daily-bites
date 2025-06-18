@@ -104,16 +104,12 @@ class MainPage extends StatelessWidget {
 
     // Check survey completion status after settings are loaded and initialized
     // db.goalsMap is populated by db.loadSettings() which is called above.
-    final surveyCompleted = db.goalsMap['surveyCompleted'];
-
-    if (surveyCompleted == false || surveyCompleted == null) {
-      // Ensure context is still valid before navigating if there were async gaps
-      // However, in this specific flow, _initializeData is awaited by FutureBuilder,
-      // and navigation happens before FutureBuilder rebuilds with HomePage.
-      // So, a direct check of mounted on a StatelessWidget's context might not be what we want.
-      // The navigation should be safe here as it's part of the future's execution.
-      Navigator.of(context).pushReplacementNamed('/survey_page');
-      return true; // Indicated navigation to survey page occurred
+    final surveyCompleted = db.surveyCompleted;
+    if (surveyCompleted == false) {
+      if (context.mounted) {
+        Navigator.of(context).pushReplacementNamed('/survey_page');
+        return true; // Indicated navigation to survey page occurred
+      }
     }
     return false; // Survey already completed, no navigation to survey page
   }
