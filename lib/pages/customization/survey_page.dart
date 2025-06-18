@@ -26,7 +26,6 @@ class SurveyPageState extends State<SurveyPage> {
   final Map<String, dynamic> _surveyAnswers = {};
 
   // Controllers for text fields
-  final TextEditingController _ageController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _sleepHoursController = TextEditingController();
@@ -46,6 +45,8 @@ class SurveyPageState extends State<SurveyPage> {
   // Map<String, dynamic>? _loadedSurveyData; // Optional: Can set controllers directly
 
   // Selected values for dropdowns/radio buttons/checkboxes
+  int? _selectedBirthYear;
+  int? _selectedBirthMonth;
   String? _selectedSex;
   String? _selectedActivityLevel;
   String? _selectedDietType;
@@ -89,7 +90,9 @@ class SurveyPageState extends State<SurveyPage> {
 
     if (data != null && mounted) {
       setState(() {
-        _ageController.text = data['age']?.toString() ?? '';
+        // _ageController.text = data['age']?.toString() ?? ''; // Age will be handled by birth year/month
+        _selectedBirthYear = data['birthYear'] as int?;
+        _selectedBirthMonth = data['birthMonth'] as int?;
         _selectedSex = data['sex'] as String?;
         _heightController.text = data['height']?.toString() ?? '';
         _weightController.text = data['weight']?.toString() ?? '';
@@ -174,7 +177,6 @@ class SurveyPageState extends State<SurveyPage> {
 
   @override
   void dispose() {
-    _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
     _sleepHoursController.dispose();
@@ -234,7 +236,9 @@ class SurveyPageState extends State<SurveyPage> {
       }
 
       // Collect all answers
-      _surveyAnswers['age'] = _ageController.text;
+      // _surveyAnswers['age'] = _ageController.text; // Age replaced by birth year/month
+      _surveyAnswers['birthYear'] = _selectedBirthYear;
+      _surveyAnswers['birthMonth'] = _selectedBirthMonth;
       _surveyAnswers['sex'] = _selectedSex;
       _surveyAnswers['height'] = _heightController.text;
       _surveyAnswers['weight'] = _weightController.text;
@@ -368,23 +372,65 @@ class SurveyPageState extends State<SurveyPage> {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 20),
-            TextFormField(
-              controller: _ageController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ],
+            // Birth Year Dropdown
+            DropdownButtonFormField<int>(
+              dropdownColor: _dropdownBackgroundColor,
               decoration: InputDecoration(
-                labelText: 'Age',
+                labelText: 'Birth Year',
                 labelStyle: Theme.of(context).textTheme.headlineSmall,
-                border: const OutlineInputBorder(), // Consistent border
+                border: const OutlineInputBorder(),
               ),
+              value: _selectedBirthYear,
+              items: List.generate(101, (index) {
+                final year = DateTime.now().year - index;
+                return DropdownMenuItem<int>(
+                  value: year,
+                  child: Text(
+                    year.toString(),
+                    style: Theme.of(context).textTheme.bodyLarge?.merge(_dropdownItemTextStyle),
+                  ),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedBirthYear = newValue;
+                });
+              },
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your age.';
+                if (value == null) {
+                  return 'Please select your birth year.';
                 }
-                if (int.tryParse(value) == null || int.parse(value) <= 0) {
-                  return 'Please enter a valid age.';
+                return null;
+              },
+            ),
+            const SizedBox(height: 10),
+            // Birth Month Dropdown
+            DropdownButtonFormField<int>(
+              dropdownColor: _dropdownBackgroundColor,
+              decoration: InputDecoration(
+                labelText: 'Birth Month',
+                labelStyle: Theme.of(context).textTheme.headlineSmall,
+                border: const OutlineInputBorder(),
+              ),
+              value: _selectedBirthMonth,
+              items: List.generate(12, (index) {
+                final month = index + 1;
+                return DropdownMenuItem<int>(
+                  value: month,
+                  child: Text(
+                    month.toString(),
+                    style: Theme.of(context).textTheme.bodyLarge?.merge(_dropdownItemTextStyle),
+                  ),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedBirthMonth = newValue;
+                });
+              },
+              validator: (value) {
+                if (value == null) {
+                  return 'Please select your birth month.';
                 }
                 return null;
               },
