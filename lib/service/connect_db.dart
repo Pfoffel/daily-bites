@@ -1,9 +1,13 @@
+import 'dart:io'; // Added for File type
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // Added for Firebase Storage
 import 'package:flutter/material.dart';
 import 'package:health_app_v1/models/recipe.dart';
 import 'package:health_app_v1/models/user_recipe.dart';
 import 'package:intl/intl.dart'; // Ensure UserRecipe is imported
+import 'package:uuid/uuid.dart'; // Added for Uuid
 
 class ConnectDb extends ChangeNotifier {
   String _uid = FirebaseAuth.instance.currentUser!.uid;
@@ -465,9 +469,37 @@ class ConnectDb extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addSharedRecipe(UserRecipe recipe) async {
+  Future<String?> uploadRecipeImage(File imageFile) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      print('User not logged in, cannot upload image.');
+      return null; // Or throw an exception
+    }
+
     try {
-      await _sharedRecipes.add(recipe.toMap());
+      final fileName = const Uuid().v4();
+      final storageRef = FirebaseStorage.instance
+          .ref('user_recipe_images/$uid/$fileName');
+      await storageRef.putFile(imageFile);
+      final downloadUrl = await storageRef.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print('Error uploading recipe image: $e');
+      return null; // Or handle error as appropriate
+    }
+  }
+
+  Future<void> addSharedRecipe(UserRecipe recipe, {File? imageFile}) async {
+    try {
+      Map<String, dynamic> recipeData = recipe.toMap();
+
+      if (imageFile != null) {
+        String? imageUrl = await uploadRecipeImage(imageFile);
+        if (imageUrl != null) {
+          recipeData['imageUrl'] = imageUrl;
+        }
+      }
+      await _sharedRecipes.add(recipeData);
     } catch (e) {
       // Log the error or handle it as needed
       print('Error adding shared recipe: $e');

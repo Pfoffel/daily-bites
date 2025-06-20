@@ -19,7 +19,9 @@ dependencies:
   google_fonts: ^6.2.1
   google_generative_ai: ^0.4.6
   http: ^1.2.2
-  image_picker: ^1.1.2
+  image_picker: ^1.0.7 # Updated version
+  firebase_storage: ^11.6.0 # Added
+  uuid: ^4.3.3 # Added
   intl: ^0.20.1
   percent_indicator: ^4.2.3
   provider: ^6.1.2

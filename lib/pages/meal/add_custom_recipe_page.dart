@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:health_app_v1/models/user_recipe.dart';
 import 'package:health_app_v1/service/connect_db.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 class AddCustomRecipePage extends StatefulWidget {
@@ -19,7 +22,7 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
   final _proteinController = TextEditingController();
   final _carbsController = TextEditingController();
   final _fatController = TextEditingController();
-  final _imageUrlController = TextEditingController();
+  File? _imageFile; // Replaces _imageUrlController
 
   bool _isLoading = false;
 
@@ -30,8 +33,19 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
     _proteinController.dispose();
     _carbsController.dispose();
     _fatController.dispose();
-    _imageUrlController.dispose();
+    // _imageUrlController.dispose(); // Removed
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
   }
 
   Future<void> _submitForm() async {
@@ -59,8 +73,7 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
         protein: double.parse(_proteinController.text),
         carbs: double.parse(_carbsController.text),
         fat: double.parse(_fatController.text),
-        imageUrl:
-            _imageUrlController.text.isEmpty ? null : _imageUrlController.text,
+        imageUrl: null, // Will be updated later with Firebase Storage
         userId: user.uid,
         createdAt: Timestamp.now(),
       );
@@ -71,7 +84,7 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
         // await Future.delayed(const Duration(seconds: 1));
 
         final connectDb = Provider.of<ConnectDb>(context, listen: false);
-        await connectDb.addSharedRecipe(newRecipe);
+        await connectDb.addSharedRecipe(newRecipe, imageFile: _imageFile);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -171,20 +184,18 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
                   return null;
                 },
               ),
-              TextFormField(
-                controller: _imageUrlController,
-                decoration:
-                    const InputDecoration(labelText: 'Image URL (Optional)'),
-                keyboardType: TextInputType.url,
-                validator: (value) {
-                  if (value != null &&
-                      value.isNotEmpty &&
-                      !Uri.parse(value).isAbsolute) {
-                    return 'Please enter a valid URL';
-                  }
-                  return null;
-                },
+              // TextFormField for Image URL removed
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _pickImage,
+                child: const Text("Pick Image"),
               ),
+              const SizedBox(height: 10),
+              if (_imageFile != null)
+                Image.file(
+                  _imageFile!,
+                  height: 150,
+                ),
               const SizedBox(height: 20),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
