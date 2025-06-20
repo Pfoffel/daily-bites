@@ -20,7 +20,7 @@ dependencies:
   google_generative_ai: ^0.4.6
   http: ^1.2.2
   image_picker: ^1.0.7 # Updated version
-  firebase_storage: ^11.6.0 # Added
+  firebase_storage: ^12.4.1 # Added
   uuid: ^4.3.3 # Added
   intl: ^0.20.1
   percent_indicator: ^4.2.3
