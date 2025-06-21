@@ -627,13 +627,11 @@ class IngredientImpactSection extends StatelessWidget {
         // Find recipe by ID. Note: Recipe ID in Firebase might be String.
         Recipe? recipe =
             allRecipes.firstWhere((r) => r.id.toString() == recipeId);
-        if (recipe != null) {
-          processedIngredients.add({
-            'name': recipe.title,
-            'avgScore': averageScore,
-            'logCount': scores.length
-          });
-        }
+        processedIngredients.add({
+          'name': recipe.title,
+          'avgScore': averageScore,
+          'logCount': scores.length
+        });
       }
     });
 

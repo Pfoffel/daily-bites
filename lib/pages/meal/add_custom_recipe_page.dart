@@ -83,7 +83,15 @@ class _AddCustomRecipePageState extends State<AddCustomRecipePage> {
         // For now, let's just simulate a delay
         // await Future.delayed(const Duration(seconds: 1));
 
+        if (_imageFile != null) {
+          // Added block
+          print('In _submitForm, _imageFile path: ${_imageFile!.path}');
+          print(
+              'In _submitForm, checking if _imageFile exists: ${await _imageFile!.exists()}');
+        }
+
         final connectDb = Provider.of<ConnectDb>(context, listen: false);
+        // Pass the _imageFile to addSharedRecipe
         await connectDb.addSharedRecipe(newRecipe, imageFile: _imageFile);
 
         if (mounted) {

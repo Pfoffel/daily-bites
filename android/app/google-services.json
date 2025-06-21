@@ -2,7 +2,7 @@
   "project_info": {
     "project_number": "683674437822",
     "project_id": "health-app-6d8ab",
-    "storage_bucket": "health-app-6d8ab.appspot.com"
+    "storage_bucket": "health-app-6d8ab.firebasestorage.app"
   },
   "client": [
     {

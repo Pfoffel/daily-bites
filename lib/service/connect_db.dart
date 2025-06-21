@@ -470,22 +470,35 @@ class ConnectDb extends ChangeNotifier {
   }
 
   Future<String?> uploadRecipeImage(File imageFile) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
       print('User not logged in, cannot upload image.');
-      return null; // Or throw an exception
+      return null;
     }
+    final String uid = user.uid;
+    final String fileName = const Uuid().v4();
+    final Reference storageRef =
+        FirebaseStorage.instance.ref('user_recipe_images/$uid/$fileName');
 
     try {
-      final fileName = const Uuid().v4();
-      final storageRef = FirebaseStorage.instance
-          .ref('user_recipe_images/$uid/$fileName');
+      print('Image file path to upload: ${imageFile.path}'); // Added
+      print(
+          'Checking if image file exists locally: ${await imageFile.exists()}'); // Added
+
+      print(
+          'Attempting to upload to Firebase Storage path: ${storageRef.fullPath}');
       await storageRef.putFile(imageFile);
-      final downloadUrl = await storageRef.getDownloadURL();
+      print('File uploaded successfully to Firebase.');
+      final String downloadUrl = await storageRef.getDownloadURL();
+      print('Successfully got download URL: $downloadUrl');
       return downloadUrl;
     } catch (e) {
-      print('Error uploading recipe image: $e');
-      return null; // Or handle error as appropriate
+      print('Error during recipe image upload process: $e');
+      if (e is FirebaseException) {
+        print(
+            'FirebaseException details - Code: ${e.code}, Message: ${e.message}');
+      }
+      return null;
     }
   }
 
