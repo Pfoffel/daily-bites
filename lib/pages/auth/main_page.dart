@@ -127,7 +127,7 @@ class MainPage extends StatelessWidget {
             ));
           }
 
-          if (snapshot.hasData) {
+          if (snapshot.hasData && snapshot.data != null) {
             final ConnectDb db = context.read<ConnectDb>();
             final RecipeList recipeList = context.read<RecipeList>();
             final Mood mood = context.read<Mood>();
@@ -163,6 +163,7 @@ class MainPage extends StatelessWidget {
               },
             );
           } else {
+            // User is not logged in, show AuthPage directly (no FutureBuilder)
             return const AuthPage();
           }
         },

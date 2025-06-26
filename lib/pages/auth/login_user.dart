@@ -27,12 +27,15 @@ class _LoginUserState extends State<LoginUser> {
       );
     } on FirebaseAuthException catch (e) {
       // Display a SnackBar with the error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Email or Password don't match"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      print("Error: ${e.code}");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Email or Password don't match"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   @override
