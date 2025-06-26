@@ -1,10 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart'; // Import for charts
-import 'package:health_app_v1/models/mood.dart';
 import 'package:health_app_v1/models/recipe.dart';
 import 'package:health_app_v1/service/connect_db.dart';
-import 'package:provider/provider.dart';
 import 'package:health_app_v1/utils/trend_chart_utils.dart';
 import 'dart:math'; // For max function
 
