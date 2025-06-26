@@ -26,6 +26,7 @@ dependencies:
   percent_indicator: ^4.2.3
   provider: ^6.1.2
   timezone: ^0.10.0
+  flutter_localization: ^0.3.3
 
 dev_dependencies:
   flutter_test:
@@ -46,4 +47,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/Daily Bites Logo.png
-    - .env
+    - .env  # Uncomment this line only if you add a .env file to your project root

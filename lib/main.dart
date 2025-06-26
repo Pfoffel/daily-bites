@@ -113,7 +113,7 @@ class MainApp extends StatelessWidget {
               padding:
                   WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 15))),
         ),
-        dialogTheme: DialogTheme(
+        dialogTheme: DialogThemeData(
           backgroundColor: Color.fromARGB(255, 9, 37, 29),
           titleTextStyle: GoogleFonts.koulen(fontSize: 24, color: Colors.white),
         ),
