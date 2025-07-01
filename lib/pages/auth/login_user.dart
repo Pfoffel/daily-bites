@@ -20,6 +20,16 @@ class _LoginUserState extends State<LoginUser> {
   final TextEditingController _passwordController = TextEditingController();
 
   Future _signIn() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      // Display a SnackBar if email or password is empty
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Please fill in all fields"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),

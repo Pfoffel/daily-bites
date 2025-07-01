@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart'; // Import for charts
 import 'package:health_app_v1/models/recipe.dart';
 import 'package:health_app_v1/service/connect_db.dart';
+import 'package:health_app_v1/service/google_api.dart';
 import 'package:health_app_v1/utils/trend_chart_utils.dart';
 import 'dart:math'; // For max function
 
@@ -239,20 +240,53 @@ class _TrendsPageState extends State<TrendsPage> {
   }
 }
 
-class SummaryInsightCard extends StatelessWidget {
+class SummaryInsightCard extends StatefulWidget {
   const SummaryInsightCard(
       {super.key, required this.mealsData, required this.moodsData});
   final List<Map<String, dynamic>> mealsData;
   final List<Map<String, dynamic>> moodsData;
 
   @override
+  State<SummaryInsightCard> createState() => _SummaryInsightCardState();
+}
+
+class _SummaryInsightCardState extends State<SummaryInsightCard> {
+  
+  String aiInsight = "Keep logging your meals for AI to give you more insights."; 
+
+ //placeholder when AI has not enoguh data
+  Future<void> getAIInsights() async {
+    String prompt = "This is a test."; // note: don't forget to load the users servey data here
+    // for (var mealDay in widget.mealsData) {
+    
+    // }
+
+    // for (var moodDay in widget.moodsData) {
+    
+    // }
+    
+    GoogleApi gemini = GoogleApi(prompt: prompt);
+    final response = await gemini.generateContentResponse();
+    if (response.text != null) {
+      setState(() {
+        aiInsight = response.text!;
+      });
+      return;
+    }
+    setState(() {
+      aiInsight = "Keep recording your meals to get more accurate AI generated insights."; //default output if AI response was not generated properly
+    });
+    return;
+  }
+
+  @override
   Widget build(BuildContext context) {
     String moodInsight = "No mood data available.";
-    if (moodsData.isNotEmpty) {
+    if (widget.moodsData.isNotEmpty) {
       // Example: find the average mood score
       double totalScore = 0;
       int moodCount = 0;
-      for (var moodDay in moodsData) {
+      for (var moodDay in widget.moodsData) {
         if (moodDay['moods'] != null) {
           for (var moodEntry in moodDay['moods']) {
             if (moodEntry['score'] != null && moodEntry['score'] != -1) {
@@ -264,17 +298,17 @@ class SummaryInsightCard extends StatelessWidget {
       }
       if (moodCount > 0) {
         moodInsight =
-            "Average mood score: ${(totalScore / moodCount).toStringAsFixed(1)}/10.";
+            "Average mood score: ${(totalScore / moodCount).toStringAsFixed(1)}/5.";
       } else {
         moodInsight = "Mood data found, but no scores recorded.";
       }
     }
 
     String mealInsight = "No meal data available.";
-    if (mealsData.isNotEmpty) {
+    if (widget.mealsData.isNotEmpty) {
       // Example: count logged meals
       int mealLogCount = 0;
-      for (var mealDay in mealsData) {
+      for (var mealDay in widget.mealsData) {
         if (mealDay['meals'] != null) {
           for (var mealTime in mealDay['meals']) {
             if (mealTime['recipes'] != null &&
@@ -286,6 +320,9 @@ class SummaryInsightCard extends StatelessWidget {
       }
       mealInsight = "You've logged meals $mealLogCount times in this period.";
     }
+
+    getAIInsights();
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
@@ -312,6 +349,14 @@ class SummaryInsightCard extends StatelessWidget {
             ),
             Text(
               mealInsight,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyLarge, // Consistent body text style
+            ),
+
+            // Placeholder for giving AI insights
+            Text(
+              aiInsight,
               style: Theme.of(context)
                   .textTheme
                   .bodyLarge, // Consistent body text style
@@ -669,11 +714,6 @@ class IngredientImpactSection extends StatelessWidget {
     return displayData;
   }
 
-  // Fake data for ingredient impact based on timeframe
-  // List<Map<String, String>> _generateImpactData(String timeframe) {
-  //   // ... removed ...
-  // }
-
   @override
   Widget build(BuildContext context) {
     final ingredientMoodScores =
@@ -772,7 +812,7 @@ class WeeklyStatsSection extends StatelessWidget {
     if (mostLoggedId == null) return 'N/A';
     Recipe? recipe =
         recipesList.firstWhere((r) => r.id.toString() == mostLoggedId);
-    return recipe != null ? '${recipe.title} ($maxCount times)' : 'N/A';
+    return '${recipe.title} ($maxCount times)';
   }
 
   // Fake data for weekly stats based on timeframe
@@ -818,7 +858,6 @@ class WeeklyStatsSection extends StatelessWidget {
     );
   }
 }
-// import 'dart:math'; // For max function - Ensure this line is removed or commented out if it exists here
 
 class IngredientDiversityGraph extends StatefulWidget {
   final String timeframe;

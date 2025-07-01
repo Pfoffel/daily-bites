@@ -28,7 +28,7 @@ class GoogleApi {
         return decodedData;
       } else {
         if (context.mounted) {
-          showMySnackBar(context, 'AI Generation Error: Try again!', 'Dismiss',
+          showMySnackBar(context, 'AI Generation Error: Try again later!', 'Dismiss',
               () {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
           });
