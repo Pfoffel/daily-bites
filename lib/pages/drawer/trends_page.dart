@@ -251,36 +251,115 @@ class SummaryInsightCard extends StatefulWidget {
 }
 
 class _SummaryInsightCardState extends State<SummaryInsightCard> {
-  
-  String aiInsight = "Keep logging your meals for AI to give you more insights."; 
+  String aiInsight = "Generating AI insights..."; // Initial loading message
+  bool _isFetchingInsights = true; // To track loading state
 
- //placeholder when AI has not enoguh data
+  @override
+  void initState() {
+    super.initState();
+    getAIInsights();
+  }
+
   Future<void> getAIInsights() async {
-    String prompt = "This is a test."; // note: don't forget to load the users servey data here
-    // for (var mealDay in widget.mealsData) {
-    
-    // }
+    setState(() {
+      _isFetchingInsights = true;
+    });
 
-    // for (var moodDay in widget.moodsData) {
-    
-    // }
-    
-    GoogleApi gemini = GoogleApi(prompt: prompt);
-    final response = await gemini.generateContentResponse();
-    if (response.text != null) {
+    final String? userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
       setState(() {
-        aiInsight = response.text!;
+        aiInsight = "Could not identify user to fetch AI insights.";
+        _isFetchingInsights = false;
       });
       return;
     }
-    setState(() {
-      aiInsight = "Keep recording your meals to get more accurate AI generated insights."; //default output if AI response was not generated properly
-    });
-    return;
+
+    final ConnectDb dbService = ConnectDb(); // Consider passing via constructor or Provider
+    Map<String, dynamic>? surveyData;
+    try {
+      surveyData = await dbService.getSurveyData(userId);
+    } catch (e) {
+      print("Error fetching survey data: $e");
+      // Handle error, maybe set a specific insight message
+    }
+
+    // Constructing the prompt
+    String prompt = """
+Analyze the following user data to provide personalized insights, feedback, and suggestions.
+The user wants to improve their health and reach their intentions based on this data.
+
+User Survey Data:
+${surveyData?.entries.map((e) => "${e.key}: ${e.value}").join('\n') ?? "No survey data available."}
+
+Logged Meals Data (last period):
+${widget.mealsData.map((day) {
+      String date = day['date'];
+      List meals = day['meals'] as List? ?? [];
+      return "On $date:\n" +
+          meals.map((meal) {
+            String mealTitle = meal['mealTitle'] ?? 'Unknown Meal';
+            List recipeIds = meal['recipes'] as List? ?? [];
+            // TODO: Fetch recipe details if needed, for now just IDs
+            return "- $mealTitle: ${recipeIds.join(', ')}";
+          }).join('\n');
+    }).join('\n\n')
+    }
+    ${widget.mealsData.isEmpty ? "No meal data logged for this period." : ""}
+
+Logged Moods Data (last period):
+${widget.moodsData.map((day) {
+      String date = day['date'];
+      List moods = day['moods'] as List? ?? [];
+      return "On $date:\n" +
+          moods.map((mood) {
+            String title = mood['title'] ?? 'Unknown Mood';
+            int score = mood['score'] ?? -1;
+            return "- $title: Score $score";
+          }).join('\n');
+    }).join('\n\n')
+    }
+    ${widget.moodsData.isEmpty ? "No mood data logged for this period." : ""}
+
+Based on all the above, provide:
+1. Key insights drawn from correlations between their survey (goals, challenges, preferences) and their logged meals/moods.
+2. Constructive feedback on their current logging patterns or dietary choices in relation to their stated goals.
+3. Actionable suggestions for what they can do to improve and reach their intentions. For example, if they want to improve energy and log low energy after certain meals, suggest alternatives. If they mention a health goal in the survey and their logs don't align, point that out with suggestions.
+Please be thorough and empathetic.
+""";
+
+    print("AI Prompt: $prompt"); // For debugging
+
+    try {
+      GoogleApi gemini = GoogleApi(prompt: prompt);
+      final response = await gemini.generateContentResponse();
+      if (response.text != null && response.text!.isNotEmpty) {
+        setState(() {
+          aiInsight = response.text!;
+        });
+      } else {
+        setState(() {
+          aiInsight =
+              "Could not generate AI insights at this time. Please try again later.";
+        });
+      }
+    } catch (e) {
+      print("Error calling Gemini API: $e");
+      setState(() {
+        aiInsight =
+            "An error occurred while fetching AI insights. Check logs for details.";
+      });
+    } finally {
+      setState(() {
+        _isFetchingInsights = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // AI Insight is now fetched in initState, build just displays it or loading state.
+    // Other insights (moodInsight, mealInsight) are calculated directly in build as before.
+
     String moodInsight = "No mood data available.";
     if (widget.moodsData.isNotEmpty) {
       // Example: find the average mood score
@@ -320,8 +399,6 @@ class _SummaryInsightCardState extends State<SummaryInsightCard> {
       }
       mealInsight = "You've logged meals $mealLogCount times in this period.";
     }
-
-    getAIInsights();
     
     return Card(
       elevation: 3,
@@ -335,7 +412,7 @@ class _SummaryInsightCardState extends State<SummaryInsightCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Summary',
+              'Summary & AI Insights', // Updated title
               style: Theme.of(context)
                   .textTheme
                   .labelLarge, // Consistent title style
@@ -353,14 +430,22 @@ class _SummaryInsightCardState extends State<SummaryInsightCard> {
                   .textTheme
                   .bodyLarge, // Consistent body text style
             ),
-
-            // Placeholder for giving AI insights
-            Text(
-              aiInsight,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyLarge, // Consistent body text style
-            ),
+            const SizedBox(height: 12), // Added space before AI insight
+            // Display AI insight or loading indicator
+            _isFetchingInsights
+                ? const Row(
+                    children: [
+                      CircularProgressIndicator(strokeWidth: 2),
+                      SizedBox(width: 8),
+                      Text("Generating AI insights...", style: TextStyle(color: Colors.white70)),
+                    ],
+                  )
+                : Text(
+                    aiInsight, // This will show the fetched insight or an error/default message
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge, // Consistent body text style
+                  ),
           ],
         ),
       ),
