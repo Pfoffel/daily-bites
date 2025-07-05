@@ -285,47 +285,45 @@ class _SummaryInsightCardState extends State<SummaryInsightCard> {
 
     // Constructing the prompt
     String prompt = """
-Analyze the following user data to provide personalized insights, feedback, and suggestions.
-The user wants to improve their health and reach their intentions based on this data.
+    Analyze the following user data to provide personalized insights, feedback, and suggestions.
+    The user wants to improve their health and reach their intentions based on this data.
 
-User Survey Data:
-${surveyData?.entries.map((e) => "${e.key}: ${e.value}").join('\n') ?? "No survey data available."}
+    User Survey Data:
+    ${surveyData?.entries.map((e) => "${e.key}: ${e.value}").join('\n') ?? "No survey data available."}
 
-Logged Meals Data (last period):
-${widget.mealsData.map((day) {
-      String date = day['date'];
-      List meals = day['meals'] as List? ?? [];
-      return "On $date:\n" +
-          meals.map((meal) {
-            String mealTitle = meal['mealTitle'] ?? 'Unknown Meal';
-            List recipeIds = meal['recipes'] as List? ?? [];
-            // TODO: Fetch recipe details if needed, for now just IDs
-            return "- $mealTitle: ${recipeIds.join(', ')}";
-          }).join('\n');
-    }).join('\n\n')
-    }
-    ${widget.mealsData.isEmpty ? "No meal data logged for this period." : ""}
+    Logged Meals Data (last period):
+    ${widget.mealsData.map((day) {
+          String date = day['date'];
+          List meals = day['meals'] as List? ?? [];
+          return "On $date:\n${meals.map((meal) {
+                String mealTitle = meal['mealTitle'] ?? 'Unknown Meal';
+                List recipeIds = meal['recipes'] as List? ?? [];
+                // TODO: Fetch recipe details if needed, for now just IDs
+                return "- $mealTitle: ${recipeIds.join(', ')}";
+              }).join('\n')}";
+        }).join('\n\n')
+        }
+        ${widget.mealsData.isEmpty ? "No meal data logged for this period." : ""}
 
-Logged Moods Data (last period):
-${widget.moodsData.map((day) {
-      String date = day['date'];
-      List moods = day['moods'] as List? ?? [];
-      return "On $date:\n" +
-          moods.map((mood) {
-            String title = mood['title'] ?? 'Unknown Mood';
-            int score = mood['score'] ?? -1;
-            return "- $title: Score $score";
-          }).join('\n');
-    }).join('\n\n')
-    }
-    ${widget.moodsData.isEmpty ? "No mood data logged for this period." : ""}
+    Logged Moods Data (last period):
+    ${widget.moodsData.map((day) {
+          String date = day['date'];
+          List moods = day['moods'] as List? ?? [];
+          return "On $date:\n${moods.map((mood) {
+                String title = mood['title'] ?? 'Unknown Mood';
+                int score = mood['score'] ?? -1;
+                return "- $title: Score $score";
+              }).join('\n')}";
+        }).join('\n\n')
+        }
+        ${widget.moodsData.isEmpty ? "No mood data logged for this period." : ""}
 
-Based on all the above, provide:
-1. Key insights drawn from correlations between their survey (goals, challenges, preferences) and their logged meals/moods.
-2. Constructive feedback on their current logging patterns or dietary choices in relation to their stated goals.
-3. Actionable suggestions for what they can do to improve and reach their intentions. For example, if they want to improve energy and log low energy after certain meals, suggest alternatives. If they mention a health goal in the survey and their logs don't align, point that out with suggestions.
-Please be thorough and empathetic.
-""";
+    Based on all the above, provide:
+    1. Key insights drawn from correlations between their survey (goals, challenges, preferences) and their logged meals/moods.
+    2. Constructive feedback on their current logging patterns or dietary choices in relation to their stated goals.
+    3. Actionable suggestions for what they can do to improve and reach their intentions. For example, if they want to improve energy and log low energy after certain meals, suggest alternatives. If they mention a health goal in the survey and their logs don't align, point that out with suggestions.
+    Please be thorough and empathetic.
+    """;
 
     print("AI Prompt: $prompt"); // For debugging
 
