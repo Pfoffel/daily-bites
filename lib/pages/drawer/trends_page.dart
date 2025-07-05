@@ -136,7 +136,7 @@ class _TrendsPageState extends State<TrendsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SummaryInsightCard(mealsData: _mealsData, moodsData: _moodsData),
+            SummaryInsightCard(mealsData: _mealsData, moodsData: _moodsData, recipes: _recipes),
             const SizedBox(height: 20),
             // Timeframe selection dropdown
             Padding(
@@ -242,9 +242,10 @@ class _TrendsPageState extends State<TrendsPage> {
 
 class SummaryInsightCard extends StatefulWidget {
   const SummaryInsightCard(
-      {super.key, required this.mealsData, required this.moodsData});
+      {super.key, required this.mealsData, required this.moodsData, required this.recipes});
   final List<Map<String, dynamic>> mealsData;
   final List<Map<String, dynamic>> moodsData;
+  final List<Recipe> recipes;
 
   @override
   State<SummaryInsightCard> createState() => _SummaryInsightCardState();
@@ -298,8 +299,11 @@ class _SummaryInsightCardState extends State<SummaryInsightCard> {
           return "On $date:\n${meals.map((meal) {
                 String mealTitle = meal['mealTitle'] ?? 'Unknown Meal';
                 List recipeIds = meal['recipes'] as List? ?? [];
-                // TODO: Fetch recipe details if needed, for now just IDs
-                return "- $mealTitle: ${recipeIds.join(', ')}";
+                String recipeNames = recipeIds.map((id) {
+                  final recipe = widget.recipes.firstWhere((r) => r.id == id, orElse: () => Recipe(id: id.toString(), title: 'Unknown Recipe', nutrients: [], category: ''));
+                  return recipe.title;
+                }).join(', ');
+                return "- $mealTitle: ${recipeNames.isNotEmpty ? recipeNames : "No specific recipes logged"}";
               }).join('\n')}";
         }).join('\n\n')
         }
