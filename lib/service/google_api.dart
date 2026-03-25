@@ -19,7 +19,7 @@ class GoogleApi {
 
   final GenerativeModel _model = GenerativeModel(
       apiKey: dotenv.env['GOOGLE_API_KEY'] ?? 'API_KEY not found',
-      model: 'gemini-2.0-flash');
+      model: 'gemini-2.5-flash');
 
   List? parseAiJson(BuildContext context, String aiResponse) {
     try {
